@@ -1,0 +1,228 @@
+.header {
+  background-color: var(--white);
+  border-bottom: 1px solid var(--light-gray);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-decoration: none;
+  color: var(--primary-navy);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xl);
+  transition: all var(--transition-fast);
+}
+
+.logo:hover {
+  color: var(--primary-navy-light);
+}
+
+.logo-icon {
+  font-size: var(--font-size-2xl);
+  display: flex;
+  align-items: center;
+}
+
+.logo-text {
+  background: linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-navy-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.nav-main {
+  display: flex;
+  gap: var(--spacing-lg);
+  flex: 1;
+  margin: 0 var(--spacing-2xl);
+}
+
+.nav-link {
+  color: var(--dark-gray);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.nav-link:hover {
+  color: var(--primary-navy);
+  background-color: var(--soft-gray);
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--primary-navy);
+  transition: width var(--transition-fast);
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: var(--soft-gray);
+  border: 1px solid var(--light-gray);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-weight: var(--font-weight-medium);
+  color: var(--primary-navy);
+}
+
+.user-button:hover {
+  background-color: var(--light-gray);
+  border-color: var(--primary-navy);
+}
+
+.user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-navy-light) 100%);
+  color: var(--white);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+}
+
+.user-name {
+  font-size: var(--font-size-sm);
+  color: var(--primary-navy);
+}
+
+.dropdown-icon {
+  font-size: var(--font-size-xs);
+  color: var(--dark-gray);
+  transition: transform var(--transition-fast);
+}
+
+.user-button:hover .dropdown-icon {
+  transform: translateY(2px);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + var(--spacing-sm));
+  right: 0;
+  background-color: var(--white);
+  border: 1px solid var(--light-gray);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  z-index: 1000;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: none;
+  border: none;
+  text-align: left;
+  color: var(--charcoal);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-normal);
+}
+
+.dropdown-item:hover {
+  background-color: var(--soft-gray);
+  color: var(--primary-navy);
+}
+
+.dropdown-item.logout:hover {
+  background-color: var(--error-light);
+  color: var(--error-red);
+}
+
+.dropdown-divider {
+  border: none;
+  border-top: 1px solid var(--light-gray);
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .header-content {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+
+  .nav-main {
+    gap: var(--spacing-md);
+    margin: 0 var(--spacing-lg);
+  }
+
+  .nav-link {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+  }
+
+  .user-name {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-text {
+    display: none;
+  }
+
+  .nav-main {
+    gap: var(--spacing-md);
+    margin: 0 var(--spacing-md);
+  }
+
+  .nav-link {
+    padding: var(--spacing-xs) var(--spacing-xs);
+  }
+}

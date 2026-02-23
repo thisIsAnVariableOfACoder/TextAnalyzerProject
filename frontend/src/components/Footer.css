@@ -1,0 +1,101 @@
+.footer {
+  background: linear-gradient(135deg, var(--primary-navy) 0%, rgba(10, 31, 92, 0.9) 100%);
+  color: var(--white);
+  padding: var(--spacing-2xl) 0 var(--spacing-lg);
+  margin-top: var(--spacing-2xl);
+  border-top: 1px solid rgba(229, 231, 235, 0.1);
+}
+
+.footer-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-2xl);
+  margin-bottom: var(--spacing-xl);
+}
+
+.footer-section h4 {
+  color: var(--white);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.footer-section p {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  opacity: 0.9;
+  margin-bottom: var(--spacing-md);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.footer-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-section li {
+  margin-bottom: var(--spacing-sm);
+}
+
+.footer-section a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
+  display: inline-block;
+}
+
+.footer-section a:hover {
+  color: var(--white);
+  text-decoration: underline;
+  transform: translateX(4px);
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: var(--spacing-lg);
+  text-align: center;
+}
+
+.footer-bottom p {
+  font-size: var(--font-size-sm);
+  opacity: 0.8;
+  margin: var(--spacing-sm) 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .footer-content {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+
+  .footer-section h4 {
+    font-size: var(--font-size-md);
+  }
+
+  .footer-section p {
+    font-size: var(--font-size-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .footer {
+    padding: var(--spacing-lg) 0 var(--spacing-md);
+  }
+
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+
+  .footer-section {
+    text-align: center;
+  }
+
+  .footer-section a {
+    display: block;
+  }
+}

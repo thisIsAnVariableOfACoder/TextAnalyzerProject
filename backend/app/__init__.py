@@ -1,0 +1,1 @@
+# Text Analyzer API application
