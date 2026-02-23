@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: textanalyzer-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: text_analyzer
+    healthcheck:
+      test: echo 'db.adminCommand("ping")' | mongosh
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: textanalyzer-api
+    ports:
+      - "8000:8000"
+    environment:
+      MONGODB_URL: mongodb://mongodb:27017/
+      DATABASE_NAME: text_analyzer
+      JWT_SECRET: dev-secret-key-change-in-prod
+      DEBUG: "True"
+      ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: textanalyzer-web
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  default:
+    name: textanalyzer-network
