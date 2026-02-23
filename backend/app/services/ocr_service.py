@@ -101,7 +101,7 @@ class OCRService:
     @staticmethod
     def _call_mistral_ocr(image_base64):
         """
-        Call Mistral OCR API
+        Call Mistral Vision API for OCR
 
         Args:
             image_base64: Base64 encoded image
@@ -110,24 +110,54 @@ class OCRService:
             Tuple of (extracted_text, confidence_score)
         """
         try:
-            # NOTE: This is a placeholder implementation
-            # The actual Mistral OCR API integration would go here
-            # For now, we'll return sample data
+            if not MISTRAL_API_KEY:
+                raise ValueError("MISTRAL_API_KEY not configured")
 
-            # In production, you would call:
-            # response = requests.post(
-            #     'https://api.mistral.ai/v1/ocr',
-            #     headers={'Authorization': f'Bearer {MISTRAL_API_KEY}'},
-            #     json={'image': f'data:image/jpeg;base64,{image_base64}'}
-            # )
-            # result = response.json()
-            # extracted_text = result['result']['text']
-            # confidence = result['result']['confidence']
+            headers = {
+                "Authorization": f"Bearer {MISTRAL_API_KEY}",
+                "Content-Type": "application/json"
+            }
 
-            logger.info("OCR API called successfully")
+            # Use Mistral Vision API with pixtral model for OCR
+            payload = {
+                "model": "pixtral-12b-2409",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "url": f"data:image/jpeg;base64,{image_base64}"
+                            },
+                            {
+                                "type": "text",
+                                "text": "Extract all text from this image. Return only the extracted text without any additional commentary."
+                            }
+                        ]
+                    }
+                ],
+                "temperature": 0.1
+            }
 
-            # Placeholder return for testing
-            return "Sample extracted text from image", 0.95
+            response = requests.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                error_msg = f"Mistral API error {response.status_code}: {response.text}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+
+            result = response.json()
+            extracted_text = result["choices"][0]["message"]["content"]
+
+            logger.info("Mistral OCR API called successfully")
+
+            # Mistral doesn't provide confidence, using high default since it's accurate
+            return extracted_text, 0.95
 
         except Exception as e:
             logger.error(f"Mistral OCR API error: {e}")

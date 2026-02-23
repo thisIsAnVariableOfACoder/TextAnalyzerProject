@@ -48,6 +48,7 @@ function EditorPage() {
   const [imagePreviewSrc, setImagePreviewSrc] = useState(null)
   const [showExportModal, setShowExportModal] = useState(false)
   const [targetLanguage, setTargetLanguage] = useState('es')
+  const [currentHistoryId, setCurrentHistoryId] = useState(null)
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -88,8 +89,10 @@ function EditorPage() {
       setProcessingType('ocr')
 
       // Add to history
+      const historyId = Date.now().toString()
+      setCurrentHistoryId(historyId)
       addToHistory({
-        id: Date.now().toString(),
+        id: historyId,
         type: 'ocr',
         input_text: response.extracted_text.substring(0, 100),
         output_text: response.extracted_text,
@@ -233,12 +236,45 @@ function EditorPage() {
 
   // Export results
   const handleExport = async (format) => {
-    // For now, just show toast
-    // In production, integrate with /api/export endpoint
-    toast.success(`Exporting as ${format.toUpperCase()}...`)
-    setTimeout(() => {
-      toast.success('File downloaded successfully!')
-    }, 1000)
+    try {
+      setIsProcessing(true)
+
+      if (!currentHistoryId) {
+        toast.error('No results to export. Process text or upload image first.')
+        setIsProcessing(false)
+        return
+      }
+
+      // Call the backend export API
+      const response = await historyAPI.exportResult(currentHistoryId, format)
+
+      // Create blob from response
+      const blob = new Blob([response.data], {
+        type: format === 'pdf'
+          ? 'application/pdf'
+          : format === 'docx'
+          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          : 'text/plain'
+      })
+
+      // Create download link and trigger download
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `export_${Date.now()}.${format === 'docx' ? 'docx' : format}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      toast.success(`Exported as ${format.toUpperCase()}!`)
+      setShowExportModal(false)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Export failed')
+      toast.error('Export failed: ' + (err.response?.data?.detail || err.message))
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const getCurrentResults = () => {

@@ -2,7 +2,7 @@ import logging
 import time
 import requests
 from typing import List, Dict
-from app.config import LANGUAGE_TOOL_API_KEY
+from app.config import LANGUAGE_TOOL_API_KEY, GOOGLE_TRANSLATE_API_KEY, MISTRAL_API_KEY
 from app.models import ProcessingType
 
 logger = logging.getLogger(__name__)
@@ -129,27 +129,82 @@ class TextProcessingService:
     @staticmethod
     def _generate_paraphrases(text: str, style: str) -> List[str]:
         """
-        Generate paraphrased versions of text
+        Generate paraphrased versions using Mistral API
 
         Strategy varies by style:
-        - normal: Simple synonym replacement
-        - formal: Complex vocabulary, passive voice
-        - casual: Conversational tone, contractions
+        - normal: General paraphrasing preserving meaning
+        - formal: Complex vocabulary and professional tone
+        - casual: Conversational tone with simple language
         """
         paraphrases = []
 
         try:
-            # Strategy 1: Synonym-based paraphrasing
-            paraphrases.append(TextProcessingService._synonym_paraphrase(text))
+            # Only use Mistral for paraphrasing if key is configured
+            if not MISTRAL_API_KEY:
+                logger.warning("MISTRAL_API_KEY not configured, returning original text")
+                return [text]
 
-            # Strategy 2: Restructuring
-            paraphrases.append(TextProcessingService._restructure_paraphrase(text))
+            prompts = {
+                'normal': f"Paraphrase this text while maintaining the exact meaning: {text}",
+                'formal': f"Rewrite this text in a more formal, professional tone: {text}",
+                'casual': f"Rewrite this text in a casual, conversational tone with simple language: {text}"
+            }
 
-            # Strategy 3: Style-based paraphrasing
-            if style == 'formal':
-                paraphrases.append(TextProcessingService._formalize_text(text))
-            elif style == 'casual':
-                paraphrases.append(TextProcessingService._casualize_text(text))
+            prompt = prompts.get(style, prompts['normal'])
+
+            # Call Mistral Chat API for paraphrasing
+            headers = {
+                "Authorization": f"Bearer {MISTRAL_API_KEY}",
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "model": "mistral-small-latest",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": len(text.split()) * 2  # Allow space for longer paraphrase
+            }
+
+            response = requests.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.warning(f"Mistral API error: {response.text}, returning original text")
+                return [text]
+
+            result = response.json()
+            paraphrased = result["choices"][0]["message"]["content"]
+            paraphrases.append(paraphrased)
+
+            # Generate one alternative with different style
+            if style != 'formal':
+                alt_prompt = prompts['formal']
+            else:
+                alt_prompt = prompts['normal']
+
+            payload["messages"] = [{"role": "user", "content": alt_prompt}]
+
+            response = requests.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                alt_paraphrased = result["choices"][0]["message"]["content"]
+                if alt_paraphrased != paraphrased:
+                    paraphrases.append(alt_paraphrased)
 
             # Remove duplicates and empty entries
             paraphrases = [p for p in paraphrases if p and p != text]
@@ -158,29 +213,8 @@ class TextProcessingService:
             return paraphrases if paraphrases else [text]
 
         except Exception as e:
-            logger.warning(f"Paraphrase generation warning: {e}")
+            logger.warning(f"Paraphrase generation error: {e}, returning original text")
             return [text]
-
-    @staticmethod
-    def _synonym_paraphrase(text: str) -> str:
-        """Basic synonym-based paraphrasing (placeholder)"""
-        # In production, integrate with Mistral or similar API
-        return f"{text} (synonym version)"
-
-    @staticmethod
-    def _restructure_paraphrase(text: str) -> str:
-        """Restructure sentences (placeholder)"""
-        return f"{text} (restructured version)"
-
-    @staticmethod
-    def _formalize_text(text: str) -> str:
-        """Make text more formal"""
-        return f"{text} (formal version)"
-
-    @staticmethod
-    def _casualize_text(text: str) -> str:
-        """Make text more casual"""
-        return f"{text} (casual version)"
 
     @staticmethod
     def translate(text: str, source_language: str = 'auto',
@@ -232,31 +266,59 @@ class TextProcessingService:
         """
         Translate using Google Translate API
 
-        Note: Using free endpoint for development
+        Args:
+            text: Text to translate
+            source_lang: Source language code
+            target_lang: Target language code
+
+        Returns:
+            Tuple of (translated_text, detected_language)
         """
         try:
-            # In production, use official Google Translate API
-            # For now, use free service endpoint
-            url = 'https://translate.googleapis.com/translate_a/element.js'
+            if not GOOGLE_TRANSLATE_API_KEY:
+                raise ValueError("GOOGLE_TRANSLATE_API_KEY not configured")
 
-            params = {
-                'cb': 'GoogleTranslateOnLoad',
-                'client': 'gtx',
-                'sl': source_lang if source_lang != 'auto' else 'auto',
-                'tl': target_lang,
-                'u': text
+            # Prepare the request to Google Translate API
+            headers = {
+                "Content-Type": "application/json"
             }
 
-            # Placeholder: In production, implement proper translation
-            logger.info(f"Translation placeholder: {source_lang} -> {target_lang}")
+            payload = {
+                "q": text,
+                "target_language": target_lang,
+                "key": GOOGLE_TRANSLATE_API_KEY
+            }
 
-            # Return translated text (placeholder)
-            return f"[{target_lang}] {text}", source_lang
+            # Add source language if not auto-detect
+            if source_lang != 'auto':
+                payload["source_language"] = source_lang
+
+            response = requests.post(
+                "https://translation.googleapis.com/language/translate/v2",
+                json=payload,
+                headers=headers,
+                timeout=15
+            )
+
+            if response.status_code != 200:
+                error_msg = f"Google Translate API error {response.status_code}: {response.text}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+
+            result = response.json()
+            translated_text = result["data"]["translations"][0]["translatedText"]
+
+            # Try to get detected source language
+            detected_language = result["data"]["translations"][0].get("detectedSourceLanguage", source_lang)
+
+            logger.info(f"Translation successful: {source_lang} -> {target_lang}")
+
+            return translated_text, detected_language
 
         except Exception as e:
             logger.error(f"Google Translate API error: {e}")
-            # Fallback response
-            return text, 'unknown'
+            # Fallback: return original text
+            raise
 
     @staticmethod
     def get_supported_languages() -> Dict[str, str]:
