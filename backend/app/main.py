@@ -97,10 +97,10 @@ async def root():
 app.include_router(auth.router)
 
 # Import and include other routers
-from app.routes import ocr
+from app.routes import ocr, text, history
 app.include_router(ocr.router)
-# app.include_router(text.router)
-# app.include_router(history.router)
+app.include_router(text.router)
+app.include_router(history.router)
 
 if __name__ == "__main__":
     import uvicorn

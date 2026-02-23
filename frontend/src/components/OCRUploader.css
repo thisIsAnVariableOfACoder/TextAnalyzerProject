@@ -1,0 +1,217 @@
+.ocr-uploader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background-color: var(--soft-gray);
+  border-radius: var(--radius-lg);
+}
+
+.uploader-header {
+  margin-bottom: var(--spacing-md);
+}
+
+.uploader-header h3 {
+  color: var(--primary-navy);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-sm);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.uploader-header p {
+  color: var(--dark-gray);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+/* Drag & Drop Zone */
+.drag-drop-zone {
+  position: relative;
+  border: 2px dashed var(--light-gray);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  background-color: var(--white);
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drag-drop-zone:hover {
+  border-color: var(--primary-navy-light);
+  background-color: #F9FAFB;
+}
+
+.drag-drop-zone.active {
+  border-color: var(--primary-navy);
+  background-color: rgba(10, 31, 92, 0.02);
+  box-shadow: var(--shadow-md);
+}
+
+.drop-content {
+  pointer-events: none;
+}
+
+.drop-icon {
+  font-size: var(--font-size-3xl);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  justify-content: center;
+}
+
+.drop-text {
+  color: var(--primary-navy);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.drop-subtext {
+  color: var(--dark-gray);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.file-input {
+  display: none;
+}
+
+/* Action Buttons */
+.uploader-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  min-height: 100px;
+}
+
+.btn-icon {
+  font-size: var(--font-size-2xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-text {
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+}
+
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* URL Input Section */
+.url-input-section {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--white);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--light-gray);
+}
+
+.url-input {
+  flex: 1;
+  padding: var(--spacing-md);
+  border: 1px solid var(--light-gray);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: var(--primary-navy);
+  box-shadow: 0 0 0 3px rgba(10, 31, 92, 0.1);
+}
+
+.url-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.url-buttons .btn {
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+/* Info Section */
+.uploader-info {
+  padding: var(--spacing-md);
+  background-color: var(--white);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--primary-navy);
+}
+
+.uploader-info p {
+  color: var(--dark-gray);
+  font-size: var(--font-size-sm);
+  margin: var(--spacing-xs) 0;
+}
+
+.uploader-info p:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ocr-uploader {
+    padding: var(--spacing-md);
+  }
+
+  .drag-drop-zone {
+    padding: var(--spacing-lg);
+    min-height: 150px;
+  }
+
+  .uploader-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .action-btn {
+    min-height: 80px;
+    font-size: var(--font-size-xs);
+  }
+
+  .url-input-section {
+    flex-direction: column;
+  }
+
+  .url-buttons {
+    flex-wrap: wrap;
+  }
+
+  .url-buttons .btn {
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .uploader-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .drop-icon {
+    font-size: var(--font-size-2xl);
+  }
+
+  .action-btn {
+    min-height: 60px;
+  }
+}
