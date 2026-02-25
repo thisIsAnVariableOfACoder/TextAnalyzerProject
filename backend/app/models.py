@@ -37,6 +37,36 @@ class TokenResponse(BaseModel):
 class TokenRefresh(BaseModel):
     refresh_token: str
 
+class UserSettings(BaseModel):
+    email_notifications: bool = True
+    save_history: bool = True
+    dark_mode: bool = False
+    two_factor_enabled: bool = False
+
+class UserProfileResponse(BaseModel):
+    id: str = Field(alias="_id")
+    username: str
+    email: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    settings: UserSettings
+
+class UpdateProfileRequest(BaseModel):
+    email: Optional[EmailStr] = None
+
+class UpdateSettingsRequest(BaseModel):
+    email_notifications: Optional[bool] = None
+    save_history: Optional[bool] = None
+    dark_mode: Optional[bool] = None
+    two_factor_enabled: Optional[bool] = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8)
+
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(..., min_length=8)
+
 # ============ OCR Models ============
 
 class OCRProcessingType(str, Enum):
@@ -56,6 +86,7 @@ class OCRResponse(BaseModel):
     processing_time_ms: float
     image_dimensions: dict
     processing_type: str
+    history_id: Optional[str] = None
 
 class OCRHistoryItem(BaseModel):
     id: str = Field(alias="_id")
@@ -73,23 +104,26 @@ class ProcessingType(str, Enum):
     TRANSLATE = "translate"
 
 class GrammarCheckRequest(BaseModel):
-    text: str = Field(..., min_length=10, max_length=50000)
+    text: str = Field(..., min_length=1, max_length=50000)
     language: str = "en"
+    save_history: bool = True
 
 class GrammarCheckResponse(BaseModel):
     original_text: str
     suggestions: List[dict]
     corrected_text: str
     issues_found: int
+    history_id: Optional[str] = None
 
 class ParaphraseRequest(BaseModel):
-    text: str = Field(..., min_length=10, max_length=50000)
+    text: str = Field(..., min_length=1, max_length=50000)
     style: Optional[str] = "normal"  # normal, formal, casual
 
 class ParaphraseResponse(BaseModel):
     original_text: str
     paraphrased_text: str
     alternatives: List[str]
+    history_id: Optional[str] = None
 
 class TranslateRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=50000)
@@ -102,6 +136,7 @@ class TranslateResponse(BaseModel):
     source_language: str
     target_language: str
     detected_language: Optional[str] = None
+    history_id: Optional[str] = None
 
 # ============ Processing History Models ============
 

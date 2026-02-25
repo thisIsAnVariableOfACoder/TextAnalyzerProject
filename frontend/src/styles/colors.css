@@ -1,26 +1,46 @@
 :root {
   /* Primary Navy Blue Theme */
-  --primary-navy: #0A1F5C;
-  --primary-navy-dark: #051132;
+  --primary-navy: #0D2461;
+  --primary-navy-dark: #071540;
   --primary-navy-light: #1E40AF;
+  --primary-navy-hover: #162d7a;
+  --primary-navy-subtle: #EEF2FF;
+
+  /* Accent Colors */
+  --accent-blue: #3B82F6;
+  --accent-blue-light: #DBEAFE;
+  --accent-teal: #0EA5E9;
+  --accent-indigo: #6366F1;
 
   /* Neutral Colors */
   --white: #FFFFFF;
   --soft-gray: #F5F7FA;
-  --light-gray: #E5E7EB;
-  --medium-gray: #D1D5DB;
-  --dark-gray: #6B7280;
-  --charcoal: #1F2937;
+  --soft-gray-2: #EEF1F6;
+  --light-gray: #E2E8F0;
+  --medium-gray: #CBD5E1;
+  --dark-gray: #64748B;
+  --charcoal: #1E293B;
+  --text-muted: #94A3B8;
 
   /* Status Colors */
   --success-green: #10B981;
   --success-light: #D1FAE5;
+  --success-dark: #065F46;
   --error-red: #EF4444;
   --error-light: #FEE2E2;
+  --error-dark: #7F1D1D;
   --warning-yellow: #F59E0B;
   --warning-light: #FEF3C7;
+  --warning-dark: #78350F;
   --info-blue: #3B82F6;
   --info-light: #DBEAFE;
+  --info-dark: #1E3A8A;
+
+  /* Gradient */
+  --gradient-primary: linear-gradient(135deg, #0D2461 0%, #1E40AF 100%);
+  --gradient-hero: linear-gradient(135deg, #0D2461 0%, #1a3a8f 50%, #2563EB 100%);
+  --gradient-card: linear-gradient(145deg, #ffffff 0%, #f5f7fa 100%);
+  --gradient-subtle: linear-gradient(180deg, #EEF2FF 0%, #F5F7FA 100%);
 
   /* Spacing */
   --spacing-xs: 4px;
@@ -29,60 +49,118 @@
   --spacing-lg: 24px;
   --spacing-xl: 32px;
   --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
 
   /* Border Radius */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-2xl: 24px;
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --shadow-xs: 0 1px 2px 0 rgba(13, 36, 97, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(13, 36, 97, 0.08), 0 1px 2px -1px rgba(13, 36, 97, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(13, 36, 97, 0.1), 0 2px 4px -2px rgba(13, 36, 97, 0.08);
+  --shadow-lg: 0 10px 15px -3px rgba(13, 36, 97, 0.1), 0 4px 6px -4px rgba(13, 36, 97, 0.08);
+  --shadow-xl: 0 20px 25px -5px rgba(13, 36, 97, 0.12), 0 8px 10px -6px rgba(13, 36, 97, 0.08);
+  --shadow-2xl: 0 25px 50px -12px rgba(13, 36, 97, 0.25);
+  --shadow-navy: 0 4px 14px 0 rgba(13, 36, 97, 0.3);
+  --shadow-inset: inset 0 2px 4px 0 rgba(13, 36, 97, 0.06);
 
   /* Typography */
-  --font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  --font-family-mono: 'SFMono-Regular', 'Menlo', 'Monaco', 'Courier New', monospace;
+  --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --font-family-mono: 'JetBrains Mono', 'SFMono-Regular', 'Menlo', 'Monaco', 'Courier New', monospace;
 
-  --font-size-xs: 12px;
-  --font-size-sm: 14px;
-  --font-size-md: 16px;
-  --font-size-lg: 18px;
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-md: 15px;
+  --font-size-lg: 17px;
   --font-size-xl: 20px;
   --font-size-2xl: 24px;
-  --font-size-3xl: 32px;
+  --font-size-3xl: 30px;
+  --font-size-4xl: 36px;
+  --font-size-5xl: 48px;
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
 
-  --line-height-tight: 1.25;
+  --line-height-tight: 1.2;
+  --line-height-snug: 1.375;
   --line-height-normal: 1.5;
-  --line-height-relaxed: 1.75;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
 
   /* Transitions */
-  --transition-fast: 150ms ease-out;
-  --transition-normal: 300ms ease-out;
-  --transition-slow: 500ms ease-out;
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Z-index */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+
+  /* Header height */
+  --header-height: 64px;
+}
+
+/* Optional dark theme (enabled when user turns on Dark Mode in My Account) */
+.theme-dark {
+  --primary-navy: #1E3A8A;
+  --primary-navy-dark: #0F172A;
+  --primary-navy-light: #3B82F6;
+  --primary-navy-hover: #2563EB;
+  --primary-navy-subtle: #1E293B;
+
+  --white: #111827;
+  --soft-gray: #0B1220;
+  --soft-gray-2: #111827;
+  --light-gray: #243244;
+  --medium-gray: #334155;
+  --dark-gray: #94A3B8;
+  --charcoal: #E2E8F0;
+  --text-muted: #94A3B8;
+
+  --gradient-primary: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
+  --gradient-hero: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 60%, #3B82F6 100%);
+  --gradient-card: linear-gradient(145deg, #111827 0%, #0F172A 100%);
+  --gradient-subtle: linear-gradient(180deg, #0F172A 0%, #111827 100%);
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.35), 0 2px 4px -2px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 10px 20px -6px rgba(0, 0, 0, 0.4), 0 4px 8px -4px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 28px -8px rgba(0, 0, 0, 0.45), 0 8px 14px -6px rgba(0, 0, 0, 0.35);
+  --shadow-2xl: 0 30px 60px -15px rgba(0, 0, 0, 0.55);
+  --shadow-navy: 0 6px 18px 0 rgba(37, 99, 235, 0.35);
+  --shadow-inset: inset 0 2px 4px 0 rgba(0, 0, 0, 0.25);
 }
 
 /* Color Utilities */
 .bg-primary-navy { background-color: var(--primary-navy); }
 .bg-soft-gray { background-color: var(--soft-gray); }
 .bg-white { background-color: var(--white); }
+.bg-gradient-primary { background: var(--gradient-primary); }
 
 .text-primary { color: var(--primary-navy); }
 .text-gray { color: var(--dark-gray); }
 .text-white { color: var(--white); }
+.text-muted { color: var(--text-muted); }
 
 .border-light { border-color: var(--light-gray); }
 .border-primary { border-color: var(--primary-navy); }
 
 /* Shadows */
+.shadow-xs { box-shadow: var(--shadow-xs); }
 .shadow-sm { box-shadow: var(--shadow-sm); }
 .shadow-md { box-shadow: var(--shadow-md); }
 .shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-xl { box-shadow: var(--shadow-xl); }

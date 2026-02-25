@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
 import useHistoryStore from '../stores/historyStore'
+import toast from 'react-hot-toast'
 import './HistoryPage.css'
 
 function HistoryPage() {
@@ -14,28 +15,44 @@ function HistoryPage() {
     setCurrentPage,
     removeFromHistory,
     clearHistory,
-    getPaginatedHistory
+    getPaginatedHistory,
+    fetchHistory
   } = useHistoryStore()
 
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login')
+      return
     }
-  }, [isAuthenticated, navigate])
+
+    fetchHistory().catch((error) => {
+      toast.error(error?.response?.data?.detail || 'Failed to load history')
+    })
+  }, [isAuthenticated, navigate, fetchHistory])
 
   const { items, total, hasMore } = getPaginatedHistory()
   const totalPages = Math.ceil(total / pageSize)
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this item?')) {
-      removeFromHistory(id)
+      try {
+        await removeFromHistory(id)
+        toast.success('History item deleted')
+      } catch (error) {
+        toast.error(error?.response?.data?.detail || 'Delete failed')
+      }
     }
   }
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (window.confirm('Are you sure you want to delete all history? This cannot be undone.')) {
-      clearHistory()
+      try {
+        await clearHistory()
+        toast.success('All history cleared')
+      } catch (error) {
+        toast.error(error?.response?.data?.detail || 'Clear history failed')
+      }
     }
   }
 

@@ -4,7 +4,7 @@ from typing import List
 from datetime import datetime
 from bson.objectid import ObjectId
 from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.models import BatchProcessingRequest, BatchProcessingResponse, ProcessingType
 from app.services.text_service import TextProcessingService
 from app.services.ocr_service import OCRService
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/batch", tags=["Batch Processing"])
 security = HTTPBearer(auto_error=False)
 
-def get_current_user(credentials: HTTPAuthCredentials = Depends(security), db: Database = Depends(get_database)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Database = Depends(get_database)):
     """Dependency to verify authentication"""
     if not credentials:
         raise HTTPException(

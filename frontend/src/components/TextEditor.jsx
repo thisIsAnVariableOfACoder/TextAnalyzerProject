@@ -1,78 +1,157 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { useEffect } from 'react'
+import toast from 'react-hot-toast'
 import './TextEditor.css'
 
-function TextEditor({ text, onChange, placeholder = 'Paste or type text here...', readOnly = false }) {
-  const [charCount, setCharCount] = useState(0)
-  const [wordCount, setWordCount] = useState(0)
+function TextEditor({
+  text,
+  onChange,
+  placeholder = 'Paste or type text here...',
+  readOnly = false,
+  locateRange = null
+}) {
+  const textareaRef = useRef(null)
+
+  const charCount = text.length
+  const wordCount = text.trim().length > 0
+    ? text.trim().split(/\s+/).filter(w => w.length > 0).length
+    : 0
+  const lineCount = text.split('\n').length
+  const charPercent = Math.min(Math.round((charCount / 50000) * 100), 100)
 
   const handleChange = (e) => {
-    const newText = e.target.value
-    onChange(newText)
-
-    // Calculate stats
-    setCharCount(newText.length)
-    const words = newText.trim().split(/\s+/).filter(w => w.length > 0).length
-    setWordCount(newText.trim().length > 0 ? words : 0)
+    onChange(e.target.value)
   }
 
   const handleClear = () => {
     onChange('')
-    setCharCount(0)
-    setWordCount(0)
+    textareaRef.current?.focus()
+  }
+
+  const handleCopy = async () => {
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Text copied to clipboard!')
+    } catch {
+      toast.error('Failed to copy')
+    }
   }
 
   const handleSelectAll = () => {
-    document.querySelector('.text-editor textarea')?.select()
+    textareaRef.current?.select()
   }
+
+  const handlePaste = async () => {
+    try {
+      const clipText = await navigator.clipboard.readText()
+      if (clipText) {
+        onChange(text + clipText)
+        toast.success('Text pasted!')
+      }
+    } catch {
+      toast.error('Failed to paste. Use Ctrl+V instead.')
+    }
+  }
+
+  useEffect(() => {
+    if (!locateRange || !textareaRef.current) return
+
+    const start = Math.max(0, Number(locateRange.start || 0))
+    const end = Math.max(start, Number(locateRange.end || start))
+
+    textareaRef.current.focus()
+    textareaRef.current.setSelectionRange(start, end)
+  }, [locateRange])
 
   return (
     <div className="text-editor">
-      <div className="editor-header">
-        <h3>Text Editor</h3>
-        <div className="editor-stats">
-          <span className="stat">
-            <strong>{wordCount}</strong> words
-          </span>
-          <span className="stat">
-            <strong>{charCount}</strong> characters
-          </span>
+      {/* Editor Header */}
+      <div className="text-editor-header">
+        <div className="editor-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span>Text Editor</span>
+        </div>
+        <div className="editor-toolbar">
+          <button
+            className="editor-tool-btn"
+            onClick={handlePaste}
+            disabled={readOnly}
+            title="Paste from clipboard"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2"/>
+            </svg>
+            Paste
+          </button>
+          <button
+            className="editor-tool-btn"
+            onClick={handleCopy}
+            disabled={!text}
+            title="Copy all text"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Copy
+          </button>
+          <button
+            className="editor-tool-btn editor-tool-danger"
+            onClick={handleClear}
+            disabled={!text || readOnly}
+            title="Clear all text"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Clear
+          </button>
         </div>
       </div>
 
+      {/* Textarea */}
       <textarea
+        ref={textareaRef}
         className="editor-textarea"
         value={text}
         onChange={handleChange}
         placeholder={placeholder}
         readOnly={readOnly}
+        spellCheck={true}
       />
 
-      <div className="editor-footer">
-        <div className="editor-actions">
-          <button
-            className="btn btn-sm btn-outline"
-            onClick={handleSelectAll}
-            title="Select all text"
-          >
-            Select All
-          </button>
-          <button
-            className="btn btn-sm btn-outline"
-            onClick={handleClear}
-            title="Clear text"
-          >
-            Clear
-          </button>
+      {/* Editor Footer */}
+      <div className="text-editor-footer">
+        <div className="editor-stats">
+          <span className="editor-stat">
+            <strong>{wordCount.toLocaleString()}</strong> words
+          </span>
+          <span className="editor-stat-divider">·</span>
+          <span className="editor-stat">
+            <strong>{charCount.toLocaleString()}</strong> chars
+          </span>
+          <span className="editor-stat-divider">·</span>
+          <span className="editor-stat">
+            <strong>{lineCount}</strong> lines
+          </span>
         </div>
-        <p className="editor-hint">
-          {text.length > 0 ? (
-            <>
-              Support up to 50,000 characters. Using {Math.round((charCount / 50000) * 100)}%
-            </>
-          ) : (
-            'Start typing or paste text to analyze'
-          )}
-        </p>
+
+        {charCount > 0 && (
+          <div className="editor-progress">
+            <div
+              className="editor-progress-bar"
+              style={{
+                width: `${charPercent}%`,
+                background: charPercent > 80 ? 'var(--warning-yellow)' : 'var(--primary-navy)'
+              }}
+            ></div>
+            <span className="editor-progress-label">{charPercent}% of 50k</span>
+          </div>
+        )}
       </div>
     </div>
   )

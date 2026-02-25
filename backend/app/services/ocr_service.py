@@ -5,13 +5,23 @@ import time
 import requests
 from PIL import Image
 from datetime import datetime
-from app.config import MISTRAL_API_KEY
 from app.models import OCRResponse
+from app.config import OCR_PROVIDER, OCR_SPACE_API_KEY, OCR_SPACE_LANGUAGE, TESSERACT_LANG
+
+try:
+    import pytesseract
+except Exception:  # pragma: no cover - optional dependency in some deployments
+    pytesseract = None
 
 logger = logging.getLogger(__name__)
 
 class OCRService:
-    """Service for handling OCR operations"""
+    """Service for handling OCR operations.
+
+    NOTE:
+    - Primary OCR path is backend-only (no popup login dependency).
+    - Providers: OCR.Space API and/or local Tesseract, with safe fallback.
+    """
 
     @staticmethod
     def process_image_file(file_bytes, file_type='image/jpeg'):
@@ -35,11 +45,7 @@ class OCRService:
             if width * height > 10000000:  # 10MP limit
                 raise ValueError("Image too large, max 10MP")
 
-            # Convert to base64
-            image_base64 = base64.b64encode(file_bytes).decode('utf-8')
-
-            # Call Mistral OCR API
-            extracted_text, confidence = OCRService._call_mistral_ocr(image_base64)
+            extracted_text, confidence = OCRService._extract_text(file_bytes, image)
 
             processing_time = time.time() - start_time
 
@@ -79,11 +85,7 @@ class OCRService:
             if width * height > 10000000:
                 raise ValueError("Image too large, max 10MP")
 
-            # Convert to base64
-            image_base64 = base64.b64encode(response.content).decode('utf-8')
-
-            # Call Mistral OCR API
-            extracted_text, confidence = OCRService._call_mistral_ocr(image_base64)
+            extracted_text, confidence = OCRService._extract_text(response.content, image)
 
             processing_time = time.time() - start_time
 
@@ -99,68 +101,21 @@ class OCRService:
             raise
 
     @staticmethod
-    def _call_mistral_ocr(image_base64):
+    def _fallback_ocr_result():
         """
-        Call Mistral Vision API for OCR
-
-        Args:
-            image_base64: Base64 encoded image
+        Return fallback OCR result for backend path.
 
         Returns:
             Tuple of (extracted_text, confidence_score)
         """
         try:
-            if not MISTRAL_API_KEY:
-                raise ValueError("MISTRAL_API_KEY not configured")
-
-            headers = {
-                "Authorization": f"Bearer {MISTRAL_API_KEY}",
-                "Content-Type": "application/json"
-            }
-
-            # Use Mistral Vision API with pixtral model for OCR
-            payload = {
-                "model": "pixtral-12b-2409",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "url": f"data:image/jpeg;base64,{image_base64}"
-                            },
-                            {
-                                "type": "text",
-                                "text": "Extract all text from this image. Return only the extracted text without any additional commentary."
-                            }
-                        ]
-                    }
-                ],
-                "temperature": 0.1
-            }
-
-            response = requests.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=30
+            return (
+                "",
+                0.0,
             )
 
-            if response.status_code != 200:
-                error_msg = f"Mistral API error {response.status_code}: {response.text}"
-                logger.error(error_msg)
-                raise Exception(error_msg)
-
-            result = response.json()
-            extracted_text = result["choices"][0]["message"]["content"]
-
-            logger.info("Mistral OCR API called successfully")
-
-            # Mistral doesn't provide confidence, using high default since it's accurate
-            return extracted_text, 0.95
-
         except Exception as e:
-            logger.error(f"Mistral OCR API error: {e}")
+            logger.error(f"Backend OCR fallback error: {e}")
             raise
 
     @staticmethod
@@ -188,3 +143,102 @@ class OCRService:
         except Exception as e:
             logger.error(f"Image validation error: {e}")
             raise
+
+    @staticmethod
+    def _extract_text(file_bytes: bytes, image: Image.Image):
+        """Primary OCR extraction path with backend-only providers.
+
+        Strategy:
+        1) OCR.Space API (if explicitly configured or forced)
+        2) Local Tesseract OCR
+        3) Empty fallback
+        """
+        provider = (OCR_PROVIDER or "auto").strip().lower()
+
+        if provider in ("ocr_space", "ocr.space"):
+            text, conf = OCRService._extract_with_ocr_space(file_bytes)
+            if text:
+                return text, conf
+
+        if provider in ("tesseract",):
+            text, conf = OCRService._extract_with_tesseract(image)
+            if text:
+                return text, conf
+
+        if provider == "auto":
+            # Auto strategy prioritizes cloud OCR first (no local binary required),
+            # then local Tesseract as fallback.
+            text, conf = OCRService._extract_with_ocr_space(file_bytes)
+            if text:
+                return text, conf
+
+            text, conf = OCRService._extract_with_tesseract(image)
+            if text:
+                return text, conf
+
+        return OCRService._fallback_ocr_result()
+
+    @staticmethod
+    def _extract_with_tesseract(image: Image.Image):
+        if pytesseract is None:
+            return "", 0.0
+
+        try:
+            # Improve OCR stability
+            if image.mode not in ("L", "RGB"):
+                image = image.convert("RGB")
+
+            text = pytesseract.image_to_string(image, lang=TESSERACT_LANG or "eng")
+            clean = (text or "").strip()
+            if not clean:
+                return "", 0.0
+
+            # Tesseract doesn't provide a single confidence directly in this call.
+            return clean, 0.86
+        except Exception as e:
+            logger.warning(f"Tesseract OCR failed: {e}")
+            return "", 0.0
+
+    @staticmethod
+    def _extract_with_ocr_space(file_bytes: bytes):
+        try:
+            url = "https://api.ocr.space/parse/image"
+            files = {
+                "filename": ("ocr-image.png", file_bytes)
+            }
+            payload = {
+                "language": OCR_SPACE_LANGUAGE or "eng",
+                "isOverlayRequired": False,
+                "OCREngine": 2,
+                "detectOrientation": True,
+                "scale": True,
+            }
+            headers = {
+                "apikey": OCR_SPACE_API_KEY or "helloworld"
+            }
+
+            response = requests.post(url, files=files, data=payload, headers=headers, timeout=40)
+            response.raise_for_status()
+            data = response.json()
+
+            if data.get("IsErroredOnProcessing"):
+                logger.warning(f"OCR.Space error: {data.get('ErrorMessage')}")
+                return "", 0.0
+
+            parsed_results = data.get("ParsedResults") or []
+            if not parsed_results:
+                return "", 0.0
+
+            extracted_parts = []
+            for result in parsed_results:
+                txt = (result.get("ParsedText") or "").strip()
+                if txt:
+                    extracted_parts.append(txt)
+
+            if not extracted_parts:
+                return "", 0.0
+
+            return "\n".join(extracted_parts), 0.9
+        except Exception as e:
+            logger.warning(f"OCR.Space extraction failed: {e}")
+            return "", 0.0

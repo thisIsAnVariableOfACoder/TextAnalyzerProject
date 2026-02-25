@@ -1,5 +1,6 @@
 import logging
 import io
+import os
 from datetime import datetime
 from typing import BinaryIO
 from bson.objectid import ObjectId
@@ -13,8 +14,63 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    return str(value)
+
+
+def _safe_processing_time(value) -> float:
+    try:
+        return float(value or 0)
+    except Exception:
+        return 0.0
+
+
+def _build_report_text(history_item: dict) -> str:
+    lines = []
+    lines.append(f"TextAnalyzer - {_safe_text(history_item.get('type', 'unknown')).title()} Report")
+    lines.append("=" * 60)
+    lines.append("")
+    lines.append(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"Processing Type: {_safe_text(history_item.get('type', 'unknown')).upper()}")
+    lines.append(f"Processing Time: {_safe_processing_time(history_item.get('processing_time_ms')):.2f}ms")
+
+    input_language = _safe_text(history_item.get('input_language'))
+    output_language = _safe_text(history_item.get('output_language'))
+    if input_language:
+        lines.append(f"Source Language: {input_language}")
+        lines.append(f"Target Language: {output_language or 'N/A'}")
+
+    lines.append("")
+    lines.append("-" * 60)
+    lines.append("INPUT TEXT")
+    lines.append("-" * 60)
+    lines.append(_safe_text(history_item.get('input_text')))
+    lines.append("")
+    lines.append("-" * 60)
+    lines.append("OUTPUT / RESULT")
+    lines.append("-" * 60)
+    lines.append(_safe_text(history_item.get('output_text')))
+    lines.append("")
+
+    metadata = history_item.get('metadata') or {}
+    if metadata:
+        lines.append("-" * 60)
+        lines.append("ADDITIONAL INFORMATION")
+        lines.append("-" * 60)
+        for key, value in metadata.items():
+            lines.append(f"{_safe_text(key).replace('_', ' ').title()}: {_safe_text(value)}")
+
+    return "\n".join(lines)
 
 class ExportService:
     """Service for exporting processing results in various formats"""
@@ -31,44 +87,7 @@ class ExportService:
             Plain text string
         """
         try:
-            lines = []
-            lines.append(f"TextAnalyzer - {history_item['type'].title()} Report")
-            lines.append("=" * 60)
-            lines.append("")
-            lines.append(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
-            lines.append(f"Processing Type: {history_item['type'].upper()}")
-            lines.append(f"Processing Time: {history_item['processing_time_ms']:.2f}ms")
-            lines.append("")
-
-            # Language info if applicable
-            if history_item.get('input_language'):
-                lines.append(f"Source Language: {history_item['input_language']}")
-                lines.append(f"Target Language: {history_item.get('output_language', 'N/A')}")
-                lines.append("")
-
-            # Input section
-            lines.append("-" * 60)
-            lines.append("INPUT TEXT")
-            lines.append("-" * 60)
-            lines.append(history_item['input_text'])
-            lines.append("")
-
-            # Output section
-            lines.append("-" * 60)
-            lines.append("OUTPUT / RESULT")
-            lines.append("-" * 60)
-            lines.append(history_item['output_text'])
-            lines.append("")
-
-            # Metadata if available
-            if history_item.get('metadata'):
-                lines.append("-" * 60)
-                lines.append("ADDITIONAL INFORMATION")
-                lines.append("-" * 60)
-                for key, value in history_item['metadata'].items():
-                    lines.append(f"{key.title()}: {value}")
-
-            return "\n".join(lines)
+            return _build_report_text(history_item)
 
         except Exception as e:
             logger.error(f"TXT export error: {e}")
@@ -98,29 +117,29 @@ class ExportService:
             metadata_para.add_run(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
             metadata_para.add_run(f"Processing Type: ").bold = True
-            metadata_para.add_run(f"{history_item['type'].upper()}\n")
+            metadata_para.add_run(f"{_safe_text(history_item.get('type', 'unknown')).upper()}\n")
 
             metadata_para.add_run(f"Processing Time: ").bold = True
-            metadata_para.add_run(f"{history_item['processing_time_ms']:.2f}ms\n")
+            metadata_para.add_run(f"{_safe_processing_time(history_item.get('processing_time_ms')):.2f}ms\n")
 
             if history_item.get('input_language'):
                 metadata_para.add_run(f"Languages: ").bold = True
                 metadata_para.add_run(
-                    f"{history_item['input_language']} → {history_item.get('output_language', 'N/A')}\n"
+                    f"{_safe_text(history_item.get('input_language'))} → {_safe_text(history_item.get('output_language', 'N/A'))}\n"
                 )
 
             doc.add_paragraph()  # Spacing
 
             # Input section
             doc.add_heading('Input Text', level=1)
-            input_para = doc.add_paragraph(history_item['input_text'])
+            input_para = doc.add_paragraph(_safe_text(history_item.get('input_text')))
             input_para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
             doc.add_paragraph()  # Spacing
 
             # Output section
             doc.add_heading('Output / Result', level=1)
-            output_para = doc.add_paragraph(history_item['output_text'])
+            output_para = doc.add_paragraph(_safe_text(history_item.get('output_text')))
             output_para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
             # Additional info table (if metadata exists)
@@ -130,7 +149,7 @@ class ExportService:
 
                 table_data = [['Metric', 'Value']]
                 for key, value in history_item['metadata'].items():
-                    table_data.append([key.replace('_', ' ').title(), str(value)])
+                    table_data.append([_safe_text(key).replace('_', ' ').title(), _safe_text(value)])
 
                 table = doc.add_table(rows=len(table_data), cols=2)
                 table.style = 'Light Grid Accent 1'
@@ -173,6 +192,25 @@ class ExportService:
         try:
             file_bytes = io.BytesIO()
 
+            # Register Unicode font fallback (for CJK and other non-latin scripts)
+            unicode_font = 'Helvetica'
+            candidate_fonts = [
+                'C:/Windows/Fonts/arialuni.ttf',
+                'C:/Windows/Fonts/msgothic.ttc',
+                'C:/Windows/Fonts/msyh.ttc',
+                'C:/Windows/Fonts/NotoSansCJK-Regular.ttc',
+            ]
+
+            for idx, font_path in enumerate(candidate_fonts):
+                if os.path.exists(font_path):
+                    try:
+                        font_name = f'TextAnalyzerUnicode{idx}'
+                        pdfmetrics.registerFont(TTFont(font_name, font_path))
+                        unicode_font = font_name
+                        break
+                    except Exception:
+                        continue
+
             # Create PDF document
             doc = SimpleDocTemplate(
                 file_bytes,
@@ -188,8 +226,9 @@ class ExportService:
             title_style = ParagraphStyle(
                 'CustomTitle',
                 parent=styles['Heading1'],
+                fontName=unicode_font,
                 fontSize=24,
-                textColor=RGBColor(10, 31, 92),  # Navy Blue
+                textColor=colors.HexColor('#0A1F5C'),  # Navy Blue
                 spaceAfter=12,
                 alignment=TA_CENTER
             )
@@ -197,8 +236,9 @@ class ExportService:
             heading_style = ParagraphStyle(
                 'CustomHeading',
                 parent=styles['Heading2'],
+                fontName=unicode_font,
                 fontSize=14,
-                textColor=RGBColor(10, 31, 92),  # Navy Blue
+                textColor=colors.HexColor('#0A1F5C'),  # Navy Blue
                 spaceAfter=6,
                 spaceBefore=6
             )
@@ -206,7 +246,9 @@ class ExportService:
             body_style = ParagraphStyle(
                 'CustomBody',
                 parent=styles['BodyText'],
+                fontName=unicode_font,
                 fontSize=11,
+                textColor=colors.HexColor('#1F2937'),
                 alignment=TA_JUSTIFY,
                 spaceAfter=6
             )
@@ -221,22 +263,23 @@ class ExportService:
             # Metadata table
             metadata_table_data = [
                 ['Generated', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')],
-                ['Processing Type', history_item['type'].upper()],
-                ['Processing Time', f"{history_item['processing_time_ms']:.2f}ms"],
+                ['Processing Type', _safe_text(history_item.get('type', 'unknown')).upper()],
+                ['Processing Time', f"{_safe_processing_time(history_item.get('processing_time_ms')):.2f}ms"],
             ]
 
             if history_item.get('input_language'):
                 metadata_table_data.append([
                     'Languages',
-                    f"{history_item['input_language']} → {history_item.get('output_language', 'N/A')}"
+                    f"{_safe_text(history_item.get('input_language'))} → {_safe_text(history_item.get('output_language', 'N/A'))}"
                 ])
 
             metadata_table = Table(metadata_table_data, colWidths=[2*inch, 4*inch])
             metadata_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), RGBColor(245, 247, 250)),  # Soft gray
-                ('TEXTCOLOR', (0, 0), (-1, -1), RGBColor(31, 41, 55)),
+                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F5F7FA')),  # Soft gray
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1F2937')),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (0, -1), unicode_font),
+                ('FONTNAME', (1, 0), (1, -1), unicode_font),
                 ('FONTSIZE', (0, 0), (-1, -1), 10),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
                 ('GRID', (0, 0), (-1, -1), 1, colors.grey),
@@ -247,12 +290,14 @@ class ExportService:
 
             # Input section
             content.append(Paragraph("Input Text", heading_style))
-            content.append(Paragraph(history_item['input_text'], body_style))
+            input_text = _safe_text(history_item.get('input_text')).replace('\n', '<br/>')
+            content.append(Paragraph(input_text, body_style))
             content.append(Spacer(1, 12))
 
             # Output section
             content.append(Paragraph("Output / Result", heading_style))
-            content.append(Paragraph(history_item['output_text'], body_style))
+            output_text = _safe_text(history_item.get('output_text')).replace('\n', '<br/>')
+            content.append(Paragraph(output_text, body_style))
 
             # Build PDF
             doc.build(content)

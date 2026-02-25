@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { historyAPI } from '../services/api'
 
 const useHistoryStore = create((set, get) => ({
   // State
@@ -14,6 +15,27 @@ const useHistoryStore = create((set, get) => ({
   // Actions
   setHistory: (history) => set({ history }),
 
+  fetchHistory: async (limit = 100, offset = 0, type = null, search = null) => {
+    set({ loading: true, error: null })
+    try {
+      const response = await historyAPI.getHistory(limit, offset, type, search)
+      const normalized = (response.items || []).map(item => ({
+        ...item,
+        id: item.id || item._id
+      }))
+      set({
+        history: normalized,
+        totalCount: response.total || normalized.length,
+        loading: false,
+        error: null
+      })
+      return response
+    } catch (error) {
+      set({ loading: false, error: error.message || 'Failed to load history' })
+      throw error
+    }
+  },
+
   addToHistory: (item) => {
     set(state => ({
       history: [item, ...state.history],
@@ -21,10 +43,17 @@ const useHistoryStore = create((set, get) => ({
     }))
   },
 
-  removeFromHistory: (id) => {
+  removeFromHistory: async (id) => {
+    try {
+      await historyAPI.deleteHistoryItem(id)
+    } catch (error) {
+      set({ error: error.message || 'Failed to delete history item' })
+      throw error
+    }
+
     set(state => ({
       history: state.history.filter(item => item.id !== id),
-      totalCount: state.totalCount - 1
+      totalCount: Math.max(0, state.totalCount - 1)
     }))
   },
 
@@ -44,13 +73,22 @@ const useHistoryStore = create((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  clearHistory: () => set({
-    history: [],
-    totalCount: 0,
-    currentPage: 0,
-    filterType: null,
-    searchText: ''
-  }),
+  clearHistory: async () => {
+    try {
+      await historyAPI.clearHistory()
+    } catch (error) {
+      set({ error: error.message || 'Failed to clear history' })
+      throw error
+    }
+
+    set({
+      history: [],
+      totalCount: 0,
+      currentPage: 0,
+      filterType: null,
+      searchText: ''
+    })
+  },
 
   getFilteredHistory: () => {
     const state = get()

@@ -1,7 +1,8 @@
 import axios from 'axios'
 import useAuthStore from '../stores/authStore'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+const API_BASE_URL = rawBaseUrl && rawBaseUrl.length > 0 ? rawBaseUrl : '/api'
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -47,7 +48,31 @@ export const authAPI = {
     apiClient.post('/auth/validate'),
 
   refreshToken: (refreshToken) =>
-    apiClient.post('/auth/refresh', { refresh_token: refreshToken })
+    apiClient.post('/auth/refresh', { refresh_token: refreshToken }),
+
+  getMe: () =>
+    apiClient.get('/auth/me'),
+
+  updateProfile: (payload) =>
+    apiClient.patch('/auth/me', payload),
+
+  updateSettings: (payload) =>
+    apiClient.patch('/auth/settings', payload),
+
+  changePassword: (currentPassword, newPassword) =>
+    apiClient.post('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword
+    }),
+
+  getSessions: () =>
+    apiClient.get('/auth/sessions'),
+
+  revokeOtherSessions: () =>
+    apiClient.post('/auth/sessions/revoke-others'),
+
+  deleteAccount: (password) =>
+    apiClient.delete('/auth/me', { data: { password } })
 }
 
 // OCR API calls
@@ -75,10 +100,11 @@ export const ocrAPI = {
 
 // Text Processing API calls
 export const textAPI = {
-  checkGrammar: (text, language = 'en') =>
+  checkGrammar: (text, language = 'en', saveHistory = true) =>
     apiClient.post('/text/grammar-check', {
       text,
-      language
+      language,
+      save_history: saveHistory
     }),
 
   paraphrase: (text, style = 'normal') =>
@@ -117,14 +143,22 @@ export const historyAPI = {
     return apiClient.get(`/history?${params}`)
   },
 
+  getHistoryItem: (id) =>
+    apiClient.get(`/history/${id}`),
+
   deleteHistoryItem: (id) =>
     apiClient.delete(`/history/${id}`),
 
+  clearHistory: () =>
+    apiClient.delete('/history'),
+
   exportResult: (historyId, format) =>
-    apiClient.post('/export', {
-      history_id: historyId,
-      format
-    })
+    axios.post(`${API_BASE_URL}/history/export/${historyId}?format=${format}`, null, {
+      responseType: 'arraybuffer',
+      headers: {
+        Authorization: `Bearer ${useAuthStore.getState().token}`
+      }
+    }).then(res => res)
 }
 
 // Health check

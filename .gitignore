@@ -2,6 +2,9 @@
 .env
 .env.local
 .env.*.local
+backend/.env 
+frontend/.env
+
 
 # Node.js
 node_modules/

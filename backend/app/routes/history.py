@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse
-from datetime import datetime
+from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from app.models import ExportFormat
 from app.services.export_service import ExportService
 from app.database import get_database
 from app.auth.jwt_handler import JWTHandler
+from app.config import OCR_HISTORY_RETENTION_DAYS
 from pymongo.database import Database
 import io
 import logging
@@ -16,7 +17,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/history", tags=["History & Export"])
 security = HTTPBearer(auto_error=False)
 
-def get_current_user(credentials: HTTPAuthCredentials = Depends(security), db: Database = Depends(get_database)):
+
+def _cleanup_expired_ocr_history(db: Database, user_id) -> int:
+    """Delete OCR history older than configured retention window for current user."""
+    if OCR_HISTORY_RETENTION_DAYS <= 0:
+        return 0
+
+    cutoff = datetime.utcnow() - timedelta(days=OCR_HISTORY_RETENTION_DAYS)
+    result = db.processing_history.delete_many({
+        'user_id': user_id,
+        'type': 'ocr',
+        'created_at': {'$lt': cutoff}
+    })
+    return result.deleted_count
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Database = Depends(get_database)):
     """Dependency to verify authentication"""
     if not credentials:
         raise HTTPException(
@@ -55,6 +70,8 @@ async def get_history(
 ):
     """Get user's processing history with pagination and filtering"""
     try:
+        _cleanup_expired_ocr_history(db, current_user['_id'])
+
         # Validate parameters
         limit = min(limit, 100)  # Max 100 items per request
         if limit <= 0: limit = 20
@@ -294,6 +311,7 @@ async def get_history_stats(
     """Get statistics about user's processing history"""
     try:
         user_id = current_user['_id']
+        _cleanup_expired_ocr_history(db, user_id)
 
         # Count by type
         type_counts = {}
@@ -333,7 +351,8 @@ async def get_history_stats(
             'total_items': total,
             'exported_count': exported,
             'by_type': type_counts,
-            'average_processing_time_ms': round(avg_time, 2)
+            'average_processing_time_ms': round(avg_time, 2),
+            'ocr_retention_days': OCR_HISTORY_RETENTION_DAYS,
         }
 
     except Exception as e:

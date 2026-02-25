@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/$/, '')
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -44,27 +46,51 @@ const useAuthStore = create(
         localStorage.removeItem('auth-storage')
       },
 
+      setUser: (user) => {
+        set({ user })
+      },
+
       login: async (username, password) => {
         set({ loading: true, error: null })
         try {
-          const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/auth/login`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username, password })
-            }
-          )
+          const loginResponse = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          })
 
-          if (!response.ok) {
-            throw new Error('Login failed')
+          if (!loginResponse.ok) {
+            const errorData = await loginResponse.json().catch(() => ({}))
+            throw new Error(errorData?.detail || 'Login failed')
           }
 
-          const data = await response.json()
+          const data = await loginResponse.json()
+
+          let profile = { username }
+          try {
+            const meResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${data.access_token}`
+              }
+            })
+            if (meResponse.ok) {
+              profile = await meResponse.json()
+            }
+          } catch {
+            // keep fallback profile
+          }
+
           set({
             token: data.access_token,
             isAuthenticated: true,
-            user: { username },
+            user: {
+              username: profile?.username || username,
+              email: profile?.email || null,
+              created_at: profile?.created_at || null,
+              settings: profile?.settings || null
+            },
             loading: false,
             error: null
           })
@@ -82,17 +108,15 @@ const useAuthStore = create(
       register: async (username, password, email) => {
         set({ loading: true, error: null })
         try {
-          const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/auth/register`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username, password, email })
-            }
-          )
+          const response = await fetch(`${API_BASE_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, email })
+          })
 
           if (!response.ok) {
-            throw new Error('Registration failed')
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData?.detail || 'Registration failed')
           }
 
           const data = await response.json()

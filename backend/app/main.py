@@ -1,9 +1,10 @@
 import logging
+import re
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime
-from app.config import APP_NAME, APP_VERSION, DEBUG, ALLOWED_ORIGINS
+from app.config import APP_NAME, APP_VERSION, DEBUG, ALLOWED_ORIGINS, ALLOWED_ORIGIN_REGEX
 from app.database import MongoDB
 from app.routes import auth
 from app.models import ErrorResponse
@@ -14,6 +15,31 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def _origin_is_allowed(origin: str | None) -> bool:
+    if not origin:
+        return False
+
+    normalized = origin.rstrip("/")
+    if normalized in ALLOWED_ORIGINS:
+        return True
+
+    try:
+        return re.match(ALLOWED_ORIGIN_REGEX, normalized) is not None
+    except re.error:
+        return False
+
+
+def _cors_headers_for_request(request: Request) -> dict:
+    origin = request.headers.get("origin")
+    if _origin_is_allowed(origin):
+        return {
+            "Access-Control-Allow-Origin": origin.rstrip("/"),
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
+        }
+    return {}
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -26,6 +52,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,6 +64,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTP exceptions"""
     return JSONResponse(
         status_code=exc.status_code,
+        headers=_cors_headers_for_request(request),
         content={
             "error": "HTTP Exception",
             "detail": exc.detail,
@@ -51,6 +79,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
+        headers=_cors_headers_for_request(request),
         content={
             "error": "Internal Server Error",
             "detail": str(exc) if DEBUG else "An error occurred",
@@ -64,7 +93,13 @@ async def general_exception_handler(request: Request, exc: Exception):
 async def startup():
     """Connect to MongoDB on startup"""
     logger.info(f"Starting {APP_NAME} v{APP_VERSION}")
-    MongoDB.connect_db()
+    try:
+        MongoDB.connect_db()
+    except Exception as exc:
+        logger.warning(
+            "MongoDB is unavailable at startup. API will run in limited mode until DB is reachable. Error: %s",
+            exc
+        )
 
 @app.on_event("shutdown")
 async def shutdown():

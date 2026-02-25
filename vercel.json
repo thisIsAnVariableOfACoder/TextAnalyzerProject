@@ -27,8 +27,6 @@
     "MONGODB_URL": "@mongodb_url",
     "DATABASE_NAME": "text_analyzer",
     "JWT_SECRET": "@jwt_secret",
-    "MISTRAL_API_KEY": "@mistral_api_key",
-    "LANGUAGE_TOOL_API_KEY": "@language_tool_api_key",
     "DEBUG": "False"
   },
   "functions": {

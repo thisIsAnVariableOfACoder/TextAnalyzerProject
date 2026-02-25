@@ -1,269 +1,177 @@
-# TextAnalyzer - Deployment Guide
+# TextAnalyzer - Local + MongoDB Atlas + Deploy Guide
 
-Complete guide for deploying TextAnalyzer to production on Vercel with MongoDB Atlas.
+Tài liệu này hướng dẫn chạy dự án với MongoDB Atlas (online) và triển khai production.
 
-## Prerequisites
+## 1) Những gì bắt buộc cần có
 
-- Node.js 18+ and npm
-- Python 3.9+
-- Git account and repository
-- Vercel account (free tier available)
-- MongoDB Atlas account (free tier available)
-- API keys for: Mistral, LanguageTool, Google Translate
+- Node.js 18+
+- Python 3.10+
+- Tài khoản MongoDB Atlas (free M0)
+- Tài khoản Vercel (deploy frontend)
+- Tài khoản Render/Railway/Fly.io (deploy backend FastAPI)
 
-## Step 1: MongoDB Atlas Setup
+> Lưu ý: AI (OCR/Grammar/Paraphrase/Translate) đi qua Puter.js phía frontend, không cần API key Mistral/LanguageTool/Google.
 
-1. **Create MongoDB Account**
-   - Visit https://www.mongodb.com/cloud/atlas
-   - Sign up for free account
+---
 
-2. **Create Cluster**
-   - Click "Create" → "Build a Database"
-   - Select "Free (M0)" tier
-   - Choose your preferred cloud region
-   - Click "Create Cluster"
+## 2) MongoDB Atlas: tạo DB online và lưu thông tin đăng nhập
 
-3. **Setup Network Access**
-   - Go to "Network Access"
-   - Click "Add IP Address"
-   - Select "Allow access from anywhere" (for development)
-   - In production, add specific IP addresses
+### Bước A - Tạo cluster free
+1. Vào https://cloud.mongodb.com/
+2. Tạo project mới.
+3. Chọn **Build a Database** -> **M0 Free**.
 
-4. **Create Database User**
-   - Go to "Database Access"
-   - Click "Add New Database User"
-   - Create username/password
-   - Save the connection string
+### Bước B - Tạo user đăng nhập DB
+1. Mở **Database Access** -> **Add New Database User**.
+2. Tạo:
+   - Username: ví dụ `textanalyzer_user`
+   - Password: mật khẩu mạnh (12+ ký tự)
+3. Gán quyền **Read and write to any database** (hoặc giới hạn database nếu muốn chặt hơn).
 
-5. **Get Connection String**
-   - In Cluster view, click "Connect"
-   - Copy the "Connection String"
-   - Replace `<password>` with your database password
-   - Format: `mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority`
+### Bước C - Network Access
+1. Mở **Network Access** -> **Add IP Address**.
+2. Dev nhanh: `0.0.0.0/0`.
+3. Production: whitelist IP backend server.
 
-## Step 2: Get API Keys
+### Bước D - Lấy connection string
+1. Vào Cluster -> **Connect** -> **Drivers**.
+2. Copy chuỗi dạng:
 
-### Mistral API Key
-1. Visit https://console.mistral.ai
-2. Sign up and verify email
-3. Go to API keys section
-4. Create new API key
-5. Copy and save securely
-
-### LanguageTool API Key (Optional - Free Tier Available)
-1. Visit https://www.languaggetoolplus.com/
-2. Register account
-3. Get API key from dashboard
-
-### Google Translate (Optional - Uses free endpoint by default)
-
-## Step 3: Local Development Setup
-
-### Setup with Docker (Recommended)
-
-```bash
-# 1. Install Docker and Docker Compose
-
-# 2. Clone repository
-git clone <your-repo-url>
-cd TextAnalyzerProject
-
-# 3. Create .env file in backend/
-cat > backend/.env << EOF
-MONGODB_URL=mongodb://mongodb:27017/
-DATABASE_NAME=text_analyzer
-JWT_SECRET=dev-secret-key-change-in-production
-MISTRAL_API_KEY=your-mistral-key
-DEBUG=True
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
-EOF
-
-# 4. Start services
-docker-compose up -d
-
-# 5. Access application
-# Frontend: http://localhost:5173
-# Backend: http://localhost:8000
-# API Docs: http://localhost:8000/docs
+```text
+mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
 ```
 
-### Manual Setup
+3. Thay `<username>`, `<password>` bằng user đã tạo.
 
-**Backend:**
-```bash
+### Bước E - Lưu thông tin đăng nhập online an toàn
+
+Không lưu user/password DB trực tiếp trong code. Chỉ lưu trong biến môi trường:
+
+- Local: file `backend/.env` (file này không commit git)
+- Production backend: dashboard service (Render/Railway/Fly) -> Environment Variables
+- Production frontend: Vercel -> Environment Variables
+
+Ví dụ `backend/.env`:
+
+```env
+MONGODB_URL=mongodb+srv://textanalyzer_user:your_password@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+DATABASE_NAME=text_analyzer
+JWT_SECRET=your-very-long-random-secret
+DEBUG=True
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
+
+---
+
+## 3) Chạy dự án locally (Windows)
+
+### Backend
+
+```cmd
 cd backend
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+venv\Scripts\activate
 pip install -r requirements.txt
-
-# Create .env with your configuration
-cp .env.example .env
-# Edit .env with your MongoDB URL and API keys
-
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**Frontend:**
-```bash
+Kiểm tra backend:
+
+```cmd
+curl http://localhost:8000/health
+```
+
+### Frontend
+
+```cmd
 cd frontend
 npm install
 npm run dev
 ```
 
-## Step 4: Vercel Deployment
+Mở: `http://localhost:3000`
 
-### 1. Push to GitHub
-
-```bash
-# Initialize git if not already done
-git add .
-git commit -m "Ready for deployment"
-git push -u origin main
-```
-
-### 2. Connect to Vercel
-
-1. Visit https://vercel.com/new
-2. Select "Import Git Repository"
-3. Choose your repository
-4. Select root directory (if mono-repo)
-5. Click "Import"
-
-### 3. Environment Variables
-
-In Vercel dashboard:
-1. Go to Project Settings → Environment Variables
-2. Add the following:
-
-```
-MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
-DATABASE_NAME=text_analyzer
-JWT_SECRET=your-super-secure-random-key-here
-MISTRAL_API_KEY=your-mistral-api-key
-LANGUAGE_TOOL_API_KEY=your-language-tool-key
-DEBUG=False
-ALLOWED_ORIGINS=https://your-domain.vercel.app
-```
-
-### 4. Deploy
-
-1. Click "Deploy"
-2. Wait for build to complete
-3. Your site is live!
-
-**Default URLs:**
-- Frontend: `https://your-project-name.vercel.app`
-- API: `https://your-project-name.vercel.app/api`
-- Docs: `https://your-project-name.vercel.app/api/docs`
-
-## Step 5: Post-Deployment
-
-### 1. Test Authentication
-```bash
-# Register
-curl -X POST https://your-domain.vercel.app/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"TestPass123","email":"test@example.com"}'
-
-# Login
-curl -X POST https://your-domain.vercel.app/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"TestPass123"}'
-```
-
-### 2. Test OCR/Text Processing
-Use Vercel's API documentation at `/api/docs` to test endpoints.
-
-### 3. Monitor Logs
-- View logs in Vercel dashboard
-- Check MongoDB Atlas for database activity
-- Monitor API usage
-
-## Troubleshooting
-
-### MongoDB Connection Issues
-- Verify connection string is correct
-- Check network access in MongoDB Atlas
-- Ensure firewall allows connections
-
-### API Timeout
-- Increase maxDuration in vercel.json
-- Check MongoDB performance
-- Optimize large batch requests
-
-### Build Failures
-- Check build logs in Vercel dashboard
-- Verify all dependencies in requirements.txt
-- Test locally before pushing
-
-## Production Checklist
-
-- [ ] Update JWT_SECRET to strong random value
-- [ ] Update allowed CORS origins
-- [ ] Enable MongoDB IP whitelist (specific IPs only)
-- [ ] Setup SSL/HTTPS (automatic on Vercel)
-- [ ] Enable error monitoring (optional)
-- [ ] Setup automated backups
-- [ ] Create database indexes (done automatically)
-- [ ] Test with production data
-- [ ] Setup custom domain
-- [ ] Monitor costs
-
-## Scaling Considerations
-
-### Database
-- Upgrade MongoDB tier as needed
-- Enable sharding for large datasets
-- Setup read replicas for high traffic
-
-### API
-- Increase function memory in vercel.json
-- Implement caching strategies
-- Setup CDN for static assets
-
-### Frontend
-- Enable ISR (Incremental Static Regeneration)
-- Optimize images and assets
-- Setup analytics
-
-## Maintenance
-
-### Regular Tasks
-- Monitor error logs
-- Review API usage metrics
-- Update dependencies monthly
-- Run database maintenance
-- Backup important data
-
-### Updates
-```bash
-# Update dependencies
-npm outdated
-pip list --outdated
-
-# Test updates locally before deploying
-npm update
-pip install --upgrade -r requirements.txt
-```
-
-## Support Resources
-
-- **FastAPI Docs:** https://fastapi.tiangolo.com/
-- **MongoDB Docs:** https://docs.mongodb.com/
-- **Vercel Docs:** https://vercel.com/docs
-- **React Docs:** https://react.dev/
-
-## Security Best Practices
-
-1. **Never commit .env files**
-2. **Use environment variables for secrets**
-3. **Enable HTTPS (automatic on Vercel)**
-4. **Validate all user inputs**
-5. **Use strong JWT secrets (32+ chars)**
-6. **Update dependencies regularly**
-7. **Monitor suspicious activity**
-8. **Implement rate limiting for APIs**
+Khi dùng tính năng AI, frontend sẽ yêu cầu đăng nhập Puter trên trình duyệt.
 
 ---
 
-**Deployed:** The application is now live and ready for production use!
+## 4) Deploy online (khuyến nghị tách frontend/backend)
+
+## 4.1 Deploy Backend FastAPI (Render)
+
+1. Push code lên GitHub.
+2. Render -> **New Web Service** -> chọn repo.
+3. Root Directory: `backend`
+4. Build Command:
+
+```bash
+pip install -r requirements.txt
+```
+
+5. Start Command:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+6. Thêm Environment Variables trên Render:
+
+```env
+MONGODB_URL=mongodb+srv://textanalyzer_user:your_password@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+DATABASE_NAME=text_analyzer
+JWT_SECRET=your-very-long-random-secret
+DEBUG=False
+ALLOWED_ORIGINS=https://your-frontend-domain.vercel.app
+```
+
+7. Deploy và lấy URL backend, ví dụ:
+
+`https://textanalyzer-api.onrender.com`
+
+## 4.2 Deploy Frontend React (Vercel)
+
+1. Vercel -> **New Project** -> import repo.
+2. Root Directory: `frontend`
+3. Build command: `npm run build`
+4. Output directory: `dist`
+5. Thêm env trên Vercel:
+
+```env
+VITE_API_BASE_URL=https://textanalyzer-api.onrender.com/api
+VITE_APP_NAME=TextAnalyzer
+```
+
+6. Deploy.
+
+---
+
+## 5) Checklist sau deploy
+
+- Truy cập frontend production.
+- Đăng ký tài khoản mới.
+- Đăng nhập.
+- Test lưu lịch sử (xác nhận backend + MongoDB Atlas hoạt động).
+- Test OCR/Grammar/Paraphrase/Translate (xác nhận Puter hoạt động).
+
+---
+
+## 6) Bảo mật thông tin đăng nhập online
+
+- Không commit file `.env` lên git.
+- Mật khẩu MongoDB Atlas nên tránh ký tự đặc biệt khó encode; nếu có thì URL encode.
+- Dùng mật khẩu khác nhau giữa dev và production.
+- Định kỳ rotate `JWT_SECRET` và DB password.
+- Chỉ whitelist IP production backend trong Atlas khi go-live.
+
+---
+
+## 7) Lỗi thường gặp
+
+### `ServerSelectionTimeoutError`
+- Sai `MONGODB_URL` hoặc Atlas chưa whitelist IP.
+
+### `CORS error`
+- Thiếu domain frontend trong `ALLOWED_ORIGINS` của backend.
+
+### Frontend gọi nhầm localhost khi đã deploy
+- Chưa set `VITE_API_BASE_URL` trên Vercel.

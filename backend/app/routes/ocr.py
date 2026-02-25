@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, status
-from fastapi.security import HTTPBearer, HTTPAuthCredentials
-from datetime import datetime
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from app.models import OCRRequest, OCRResponse, OCRProcessingType
 from app.services.ocr_service import OCRService
 from app.database import get_database
-from app.auth.jwt_handler import JWTHandler, extract_token_from_header
+from app.auth.jwt_handler import JWTHandler
+from app.config import OCR_HISTORY_RETENTION_DAYS
 from pymongo.database import Database
 import logging
 
@@ -14,7 +15,41 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ocr", tags=["OCR"])
 security = HTTPBearer(auto_error=False)
 
-def get_current_user(credentials: HTTPAuthCredentials = Depends(security), db: Database = Depends(get_database)):
+
+def _cleanup_expired_ocr_history(db: Database, user_id) -> int:
+    """Delete OCR history older than configured retention window for current user."""
+    if OCR_HISTORY_RETENTION_DAYS <= 0:
+        return 0
+
+    cutoff = datetime.utcnow() - timedelta(days=OCR_HISTORY_RETENTION_DAYS)
+    result = db.processing_history.delete_many({
+        'user_id': user_id,
+        'type': 'ocr',
+        'created_at': {'$lt': cutoff}
+    })
+    return result.deleted_count
+
+
+def _build_ocr_history_item(current_user, result: dict, image_url: str | None):
+    now = datetime.utcnow()
+    item = {
+        'user_id': current_user['_id'],
+        'type': 'ocr',
+        'input_text': result['extracted_text'],
+        'output_text': result['extracted_text'],
+        'image_url': image_url,
+        'confidence_score': result['confidence_score'],
+        'processing_time_ms': result['processing_time_ms'],
+        'created_at': now,
+        'is_exported': False,
+    }
+
+    if OCR_HISTORY_RETENTION_DAYS > 0:
+        item['ocr_expires_at'] = now + timedelta(days=OCR_HISTORY_RETENTION_DAYS)
+
+    return item
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Database = Depends(get_database)):
     """Dependency to verify authentication"""
     if not credentials:
         raise HTTPException(
@@ -50,6 +85,8 @@ async def process_ocr(
 ):
     """Process image for OCR text extraction"""
     try:
+        _cleanup_expired_ocr_history(db, current_user['_id'])
+
         # Route based on processing type
         if ocr_request.processing_type == OCRProcessingType.URL:
             if not ocr_request.image_url:
@@ -81,27 +118,21 @@ async def process_ocr(
 
             result = OCRService.process_image_file(image_bytes)
 
-        # Save to processing history
-        history_item = {
-            'user_id': current_user['_id'],
-            'type': 'ocr',
-            'input_text': result['extracted_text'][:100],
-            'output_text': result['extracted_text'],
-            'image_url': ocr_request.image_url,
-            'confidence_score': result['confidence_score'],
-            'processing_time_ms': result['processing_time_ms'],
-            'created_at': datetime.utcnow(),
-            'is_exported': False
-        }
+        history_id = None
+        save_history_enabled = current_user.get('settings', {}).get('save_history', True)
 
-        db.processing_history.insert_one(history_item)
+        if save_history_enabled:
+            history_item = _build_ocr_history_item(current_user, result, ocr_request.image_url)
+            insert_result = db.processing_history.insert_one(history_item)
+            history_id = str(insert_result.inserted_id)
 
         return {
             'extracted_text': result['extracted_text'],
             'confidence_score': result['confidence_score'],
             'processing_time_ms': result['processing_time_ms'],
             'image_dimensions': result['image_dimensions'],
-            'processing_type': ocr_request.processing_type
+            'processing_type': ocr_request.processing_type,
+            'history_id': history_id
         }
 
     except HTTPException:
@@ -121,6 +152,8 @@ async def upload_image(
 ):
     """Upload and process image file"""
     try:
+        _cleanup_expired_ocr_history(db, current_user['_id'])
+
         # Read file
         contents = await file.read()
 
@@ -130,26 +163,20 @@ async def upload_image(
         # Process OCR
         result = OCRService.process_image_file(contents, file.content_type)
 
-        # Save to processing history
-        history_item = {
-            'user_id': current_user['_id'],
-            'type': 'ocr',
-            'input_text': result['extracted_text'][:100],
-            'output_text': result['extracted_text'],
-            'image_url': f"file://{file.filename}",
-            'confidence_score': result['confidence_score'],
-            'processing_time_ms': result['processing_time_ms'],
-            'created_at': datetime.utcnow(),
-            'is_exported': False
-        }
+        history_id = None
+        save_history_enabled = current_user.get('settings', {}).get('save_history', True)
 
-        db.processing_history.insert_one(history_item)
+        if save_history_enabled:
+            history_item = _build_ocr_history_item(current_user, result, f"file://{file.filename}")
+            insert_result = db.processing_history.insert_one(history_item)
+            history_id = str(insert_result.inserted_id)
 
         return {
             'extracted_text': result['extracted_text'],
             'confidence_score': result['confidence_score'],
             'processing_time_ms': result['processing_time_ms'],
-            'image_dimensions': result['image_dimensions']
+            'image_dimensions': result['image_dimensions'],
+            'history_id': history_id
         }
 
     except HTTPException:

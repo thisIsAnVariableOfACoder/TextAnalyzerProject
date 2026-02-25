@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
 from bson.objectid import ObjectId
 from app.models import (
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/text", tags=["Text Processing"])
 security = HTTPBearer(auto_error=False)
 
-def get_current_user(credentials: HTTPAuthCredentials = Depends(security), db: Database = Depends(get_database)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Database = Depends(get_database)):
     """Dependency to verify authentication"""
     if not credentials:
         raise HTTPException(
@@ -56,30 +56,37 @@ async def check_grammar(
     try:
         result = TextProcessingService.check_grammar(request.text, request.language)
 
-        # Save to processing history
-        history_item = {
-            'user_id': current_user['_id'],
-            'type': 'grammar',
-            'input_text': request.text[:100],
-            'output_text': result['corrected_text'][:100],
-            'input_language': request.language,
-            'output_language': request.language,
-            'processing_time_ms': result['processing_time_ms'],
-            'created_at': datetime.utcnow(),
-            'is_exported': False,
-            'metadata': {
-                'issues_found': result['issues_found'],
-                'suggestions_count': len(result['suggestions'])
-            }
-        }
+        history_id = None
+        save_history_enabled = (
+            current_user.get('settings', {}).get('save_history', True)
+            and bool(request.save_history)
+        )
 
-        db.processing_history.insert_one(history_item)
+        if save_history_enabled:
+            history_item = {
+                'user_id': current_user['_id'],
+                'type': 'grammar',
+                'input_text': request.text,
+                'output_text': result['corrected_text'],
+                'input_language': request.language,
+                'output_language': request.language,
+                'processing_time_ms': result['processing_time_ms'],
+                'created_at': datetime.utcnow(),
+                'is_exported': False,
+                'metadata': {
+                    'issues_found': result['issues_found'],
+                    'suggestions_count': len(result['suggestions'])
+                }
+            }
+            insert_result = db.processing_history.insert_one(history_item)
+            history_id = str(insert_result.inserted_id)
 
         return {
             'original_text': result['original_text'],
             'suggestions': result['suggestions'],
             'corrected_text': result['corrected_text'],
-            'issues_found': result['issues_found']
+            'issues_found': result['issues_found'],
+            'history_id': history_id
         }
 
     except ValueError as e:
@@ -104,27 +111,31 @@ async def paraphrase_text(
     try:
         result = TextProcessingService.paraphrase(request.text, request.style or 'normal')
 
-        # Save to processing history
-        history_item = {
-            'user_id': current_user['_id'],
-            'type': 'paraphrase',
-            'input_text': request.text[:100],
-            'output_text': result['paraphrased_text'][:100],
-            'processing_time_ms': result['processing_time_ms'],
-            'created_at': datetime.utcnow(),
-            'is_exported': False,
-            'metadata': {
-                'style': result['style'],
-                'alternatives_count': len(result['alternatives'])
-            }
-        }
+        history_id = None
+        save_history_enabled = current_user.get('settings', {}).get('save_history', True)
 
-        db.processing_history.insert_one(history_item)
+        if save_history_enabled:
+            history_item = {
+                'user_id': current_user['_id'],
+                'type': 'paraphrase',
+                'input_text': request.text,
+                'output_text': result['paraphrased_text'],
+                'processing_time_ms': result['processing_time_ms'],
+                'created_at': datetime.utcnow(),
+                'is_exported': False,
+                'metadata': {
+                    'style': result['style'],
+                    'alternatives_count': len(result['alternatives'])
+                }
+            }
+            insert_result = db.processing_history.insert_one(history_item)
+            history_id = str(insert_result.inserted_id)
 
         return {
             'original_text': result['original_text'],
             'paraphrased_text': result['paraphrased_text'],
-            'alternatives': result['alternatives']
+            'alternatives': result['alternatives'],
+            'history_id': history_id
         }
 
     except ValueError as e:
@@ -153,30 +164,34 @@ async def translate_text(
             request.target_language
         )
 
-        # Save to processing history
-        history_item = {
-            'user_id': current_user['_id'],
-            'type': 'translate',
-            'input_text': request.text[:100],
-            'output_text': result['translated_text'][:100],
-            'input_language': request.source_language,
-            'output_language': request.target_language,
-            'processing_time_ms': result['processing_time_ms'],
-            'created_at': datetime.utcnow(),
-            'is_exported': False,
-            'metadata': {
-                'detected_language': result['detected_language']
-            }
-        }
+        history_id = None
+        save_history_enabled = current_user.get('settings', {}).get('save_history', True)
 
-        db.processing_history.insert_one(history_item)
+        if save_history_enabled:
+            history_item = {
+                'user_id': current_user['_id'],
+                'type': 'translate',
+                'input_text': request.text,
+                'output_text': result['translated_text'],
+                'input_language': request.source_language,
+                'output_language': request.target_language,
+                'processing_time_ms': result['processing_time_ms'],
+                'created_at': datetime.utcnow(),
+                'is_exported': False,
+                'metadata': {
+                    'detected_language': result['detected_language']
+                }
+            }
+            insert_result = db.processing_history.insert_one(history_item)
+            history_id = str(insert_result.inserted_id)
 
         return {
             'original_text': result['original_text'],
             'translated_text': result['translated_text'],
             'source_language': result['source_language'],
             'target_language': result['target_language'],
-            'detected_language': result['detected_language']
+            'detected_language': result['detected_language'],
+            'history_id': history_id
         }
 
     except ValueError as e:
