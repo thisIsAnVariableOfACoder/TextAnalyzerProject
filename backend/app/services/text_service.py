@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple
 from xml.sax.saxutils import unescape
 
 import requests
+from app.config import TEXT_PROVIDER_MODE
 
 try:
     from deep_translator import GoogleTranslator
@@ -776,15 +777,22 @@ class TextProcessingService:
             resolved_language = language if language in SUPPORTED_LANGUAGES else _detect_language(text)
 
             source = 'languagetool_public'
-            try:
-                corrected_text, suggestions = _check_with_languagetool(text, resolved_language)
-            except Exception as remote_err:
-                logger.warning('LanguageTool unavailable, using local grammar fallback: %s', remote_err)
+            if TEXT_PROVIDER_MODE == 'local_only':
                 source = 'local_heuristic'
                 corrected_text, suggestions = _normalize_text(text)
                 if resolved_language.startswith('en'):
                     corrected_text, typo_suggestions = _apply_typo_fixes(corrected_text)
                     suggestions.extend(typo_suggestions)
+            else:
+                try:
+                    corrected_text, suggestions = _check_with_languagetool(text, resolved_language)
+                except Exception as remote_err:
+                    logger.warning('LanguageTool unavailable, using local grammar fallback: %s', remote_err)
+                    source = 'local_heuristic'
+                    corrected_text, suggestions = _normalize_text(text)
+                    if resolved_language.startswith('en'):
+                        corrected_text, typo_suggestions = _apply_typo_fixes(corrected_text)
+                        suggestions.extend(typo_suggestions)
 
             if resolved_language.startswith('en'):
                 corrected_text, agreement_suggestions = _apply_english_agreement_fixes(corrected_text)
@@ -855,7 +863,7 @@ class TextProcessingService:
             working = text
             source = 'local_heuristic'
 
-            if detected != 'en':
+            if TEXT_PROVIDER_MODE == 'free_single' and detected != 'en':
                 try:
                     working = _google_translate(text, detected, 'en')
                     source = 'deep_translator'
@@ -865,14 +873,15 @@ class TextProcessingService:
             candidates: List[str] = []
 
             # Back-translation usually gives natural rewording
-            for pivot in ('fr', 'de', 'es', 'it', 'pt'):
-                try:
-                    bt = _back_translate(working, pivot)
-                    if bt and bt.strip() and (not _looks_like_error_payload(bt)) and bt.strip().lower() != working.strip().lower():
-                        candidates.append(bt.strip())
-                        source = 'deep_translator'
-                except Exception:
-                    continue
+            if TEXT_PROVIDER_MODE == 'free_single':
+                for pivot in ('fr', 'de', 'es', 'it', 'pt'):
+                    try:
+                        bt = _back_translate(working, pivot)
+                        if bt and bt.strip() and (not _looks_like_error_payload(bt)) and bt.strip().lower() != working.strip().lower():
+                            candidates.append(bt.strip())
+                            source = 'deep_translator'
+                    except Exception:
+                        continue
 
             base = candidates[0] if candidates else working
             if _looks_like_error_payload(base):
@@ -913,7 +922,7 @@ class TextProcessingService:
                         break
 
             # Convert back to original language if needed
-            if detected != 'en':
+            if TEXT_PROVIDER_MODE == 'free_single' and detected != 'en':
                 try:
                     main = _google_translate(main, 'en', detected)
                     translated_alts = []
@@ -971,22 +980,26 @@ class TextProcessingService:
                 translated_text = text
                 source = 'noop_same_language'
             else:
-                source = 'deep_translator'
-                try:
-                    translated_text = _google_translate(text, source_language, target_language)
-                    if not _looks_translation_plausible(text, translated_text, target_language):
-                        raise RuntimeError('Primary translation failed plausibility checks')
-                except Exception as remote_err:
-                    logger.warning('Deep translator failed, trying MyMemory fallback: %s', remote_err)
+                if TEXT_PROVIDER_MODE == 'local_only':
+                    translated_text = _translate_rule_based(text, target_language)
+                    source = 'rule_based_fallback'
+                else:
+                    source = 'deep_translator'
                     try:
-                        translated_text = _mymemory_translate(text, source_language, target_language)
+                        translated_text = _google_translate(text, source_language, target_language)
                         if not _looks_translation_plausible(text, translated_text, target_language):
-                            raise RuntimeError('MyMemory translation failed plausibility checks')
-                        source = 'mymemory_fallback'
-                    except Exception as mymemory_err:
-                        logger.warning('MyMemory fallback failed, using dictionary fallback: %s', mymemory_err)
-                        translated_text = _translate_rule_based(text, target_language)
-                        source = 'rule_based_fallback'
+                            raise RuntimeError('Primary translation failed plausibility checks')
+                    except Exception as remote_err:
+                        logger.warning('Deep translator failed, trying MyMemory fallback: %s', remote_err)
+                        try:
+                            translated_text = _mymemory_translate(text, source_language, target_language)
+                            if not _looks_translation_plausible(text, translated_text, target_language):
+                                raise RuntimeError('MyMemory translation failed plausibility checks')
+                            source = 'mymemory_fallback'
+                        except Exception as mymemory_err:
+                            logger.warning('MyMemory fallback failed, using dictionary fallback: %s', mymemory_err)
+                            translated_text = _translate_rule_based(text, target_language)
+                            source = 'rule_based_fallback'
 
             processing_time = time.time() - start_time
             return {

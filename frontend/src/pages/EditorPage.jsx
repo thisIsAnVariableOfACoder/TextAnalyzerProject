@@ -553,13 +553,45 @@ function EditorPage() {
   }
 
   const handleFocusGrammarIssue = (suggestion) => {
-    const offset = Number(suggestion?.offset)
-    const length = Number(suggestion?.length)
+    const rawOffset = Number(suggestion?.offset)
+    const rawLength = Number(suggestion?.length)
+    const originalFragment = (suggestion?.original || '').trim()
 
-    if (!Number.isFinite(offset)) return
+    let start = Number.isFinite(rawOffset) ? Math.max(0, rawOffset) : -1
+    let length = Number.isFinite(rawLength) ? Math.max(0, rawLength) : 0
 
-    const start = Math.max(0, offset)
-    const end = Math.max(start, start + (Number.isFinite(length) ? Math.max(0, length) : 0))
+    if (start < 0 && originalFragment) {
+      const found = currentText.indexOf(originalFragment)
+      if (found >= 0) {
+        start = found
+      }
+    }
+
+    if (start < 0) return
+
+    if (length <= 0 && originalFragment) {
+      const slice = currentText.slice(start, start + originalFragment.length)
+      if (slice.toLowerCase() === originalFragment.toLowerCase()) {
+        length = originalFragment.length
+      }
+    }
+
+    if (length <= 0) {
+      // Fallback to highlight the current word under offset so the user can still see focus.
+      const text = currentText || ''
+      let left = Math.min(start, text.length)
+      let right = left
+
+      while (left > 0 && /\S/.test(text[left - 1])) left -= 1
+      while (right < text.length && /\S/.test(text[right])) right += 1
+
+      if (right > left) {
+        start = left
+        length = right - left
+      }
+    }
+
+    const end = Math.min(currentText.length, Math.max(start, start + length))
 
     setActiveTab('editor')
     setGrammarFocusRange({ start, end, key: `${start}-${end}-${Date.now()}` })

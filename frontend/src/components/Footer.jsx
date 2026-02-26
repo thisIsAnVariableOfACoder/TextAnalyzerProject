@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import AppSymbol from './AppSymbol'
 import './Footer.css'
 
 function Footer() {
@@ -10,9 +11,7 @@ function Footer() {
         <div className="footer-brand">
           <Link to="/" className="footer-logo">
             <div className="footer-logo-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M9 12h6M9 8h6M9 16h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <AppSymbol size={18} />
             </div>
             <span>TextAnalyzer</span>
           </Link>
@@ -26,6 +25,7 @@ function Footer() {
             <Link to="/editor?mode=grammar">Grammar Check</Link>
             <Link to="/editor?mode=paraphrase">Paraphrase</Link>
             <Link to="/editor?mode=translate">Translation</Link>
+            <Link to="/universal-reader">Universal Reader</Link>
           </div>
           <div className="footer-link-group">
             <h4>Account</h4>

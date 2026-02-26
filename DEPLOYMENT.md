@@ -10,7 +10,10 @@ Tài liệu này hướng dẫn chạy dự án với MongoDB Atlas (online) và
 - Tài khoản Vercel (deploy frontend)
 - Tài khoản Render/Railway/Fly.io (deploy backend FastAPI)
 
-> Lưu ý: AI (OCR/Grammar/Paraphrase/Translate) đi qua Puter.js phía frontend, không cần API key Mistral/LanguageTool/Google.
+> Lưu ý: triển khai theo mô hình **single free provider** qua backend:
+> - OCR: OCR.Space (free)
+> - Grammar: LanguageTool public
+> - Paraphrase/Translate: deep-translator (free)
 
 ---
 
@@ -91,7 +94,7 @@ npm run dev
 
 Mở: `http://localhost:3000`
 
-Khi dùng tính năng AI, frontend sẽ yêu cầu đăng nhập Puter trên trình duyệt.
+Không cần đăng nhập Puter trên trình duyệt.
 
 ---
 
@@ -122,6 +125,9 @@ DATABASE_NAME=text_analyzer
 JWT_SECRET=your-very-long-random-secret
 DEBUG=False
 ALLOWED_ORIGINS=https://your-frontend-domain.vercel.app
+OCR_PROVIDER=ocr_space
+OCR_SPACE_API_KEY=helloworld
+TEXT_PROVIDER_MODE=free_single
 ```
 
 7. Deploy và lấy URL backend, ví dụ:
@@ -151,7 +157,7 @@ VITE_APP_NAME=TextAnalyzer
 - Đăng ký tài khoản mới.
 - Đăng nhập.
 - Test lưu lịch sử (xác nhận backend + MongoDB Atlas hoạt động).
-- Test OCR/Grammar/Paraphrase/Translate (xác nhận Puter hoạt động).
+- Test OCR/Grammar/Paraphrase/Translate (xác nhận backend free provider hoạt động).
 
 ---
 
