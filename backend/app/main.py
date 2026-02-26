@@ -109,8 +109,9 @@ async def shutdown():
 
 # Health check endpoint
 @app.get("/health")
+@app.get("/api/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint (supports both /health and /api/health)."""
     return {
         "status": "healthy",
         "app": APP_NAME,
@@ -120,12 +121,15 @@ async def health_check():
 
 # Root endpoint
 @app.get("/")
+@app.get("/api")
 async def root():
-    """Root endpoint"""
+    """Root endpoint (supports both / and /api)."""
     return {
         "message": f"Welcome to {APP_NAME}",
         "version": APP_VERSION,
-        "docs": "/docs"
+        "docs": "/docs",
+        "health": "/health",
+        "api_health": "/api/health"
     }
 
 # Include routers

@@ -164,7 +164,7 @@ export const historyAPI = {
 // Health check
 export const healthAPI = {
   check: () =>
-    apiClient.get('/health')
+    apiClient.get('/health').catch(() => apiClient.get('/api/health'))
 }
 
 export default apiClient
