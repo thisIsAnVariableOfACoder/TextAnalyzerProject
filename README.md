@@ -70,6 +70,17 @@ npm run dev
 ```env
 MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
 DATABASE_NAME=text_analyzer
+MONGODB_ALLOW_LOCAL_FALLBACK=false
+MONGO_SERVER_SELECTION_TIMEOUT_MS=12000
+MONGO_CONNECT_TIMEOUT_MS=15000
+MONGO_SOCKET_TIMEOUT_MS=20000
+```
+
+For Vercel + Render production CORS:
+
+```env
+ALLOWED_ORIGINS=https://textanalyzerllmagik.vercel.app,https://textanalyzerproject.onrender.com
+ALLOWED_ORIGIN_REGEX=^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://([a-z0-9-]+)\.vercel\.app$
 ```
 
 If your network has TLS/DNS issues with Atlas, add local fallback:
@@ -296,3 +307,14 @@ frontend/src/
 ### Trade-offs (current MVP)
 - Chosen hybrid strategy: robust text/document formats first, full PDF AST deferred to Phase 3 to avoid premature complexity.
 - Canvas-first rendering improves scalability for large docs, but rich semantic editing UX still requires more DOM/text-layer synchronization work in next phases.
+
+## 👥 Team LLMagik
+
+- **Phạm Khôi Nguyên**  
+  https://github.com/thisIsAnVariableOfACoder  
+
+- **Đinh Quang Minh**  
+  https://github.com/minhhdinh192  
+
+- **Vũ Minh Hoàng**  
+  https://github.com/GetInHod  

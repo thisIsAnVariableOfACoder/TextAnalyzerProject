@@ -10,8 +10,20 @@ services:
         value: 3.11.11
       - key: DEBUG
         value: "False"
+      - key: ALLOWED_ORIGINS
+        value: "https://textanalyzerllmagik.vercel.app,https://textanalyzerproject.onrender.com"
+      - key: ALLOWED_ORIGIN_REGEX
+        value: "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?$|^https://([a-z0-9-]+)\\.vercel\\.app$"
       - key: DATABASE_NAME
         value: text_analyzer
+      - key: MONGODB_ALLOW_LOCAL_FALLBACK
+        value: "false"
+      - key: MONGO_SERVER_SELECTION_TIMEOUT_MS
+        value: "12000"
+      - key: MONGO_CONNECT_TIMEOUT_MS
+        value: "15000"
+      - key: MONGO_SOCKET_TIMEOUT_MS
+        value: "20000"
       - key: OCR_PROVIDER
         value: ocr_space
       - key: OCR_SPACE_LANGUAGE

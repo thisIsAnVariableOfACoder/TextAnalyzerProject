@@ -133,11 +133,18 @@ MONGODB_URL=mongodb+srv://textanalyzer_user:your_password@cluster0.xxxxx.mongodb
 DATABASE_NAME=text_analyzer
 JWT_SECRET=your-very-long-random-secret
 DEBUG=False
-ALLOWED_ORIGINS=https://your-frontend-domain.vercel.app
+ALLOWED_ORIGINS=https://textanalyzerllmagik.vercel.app,https://textanalyzerproject.onrender.com
+ALLOWED_ORIGIN_REGEX=^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://([a-z0-9-]+)\.vercel\.app$
+MONGODB_ALLOW_LOCAL_FALLBACK=false
+MONGO_SERVER_SELECTION_TIMEOUT_MS=12000
+MONGO_CONNECT_TIMEOUT_MS=15000
+MONGO_SOCKET_TIMEOUT_MS=20000
 OCR_PROVIDER=ocr_space
 OCR_SPACE_API_KEY=helloworld
 TEXT_PROVIDER_MODE=free_single
 ```
+
+> Nếu mật khẩu MongoDB có ký tự đặc biệt (`@`, `:`, `/`, `%`, `#`, `?`) thì bắt buộc URL-encode trong `MONGODB_URL`.
 
 8. Deploy và lấy URL backend, ví dụ:
 
@@ -184,6 +191,8 @@ VITE_APP_NAME=TextAnalyzer
 
 ### `ServerSelectionTimeoutError`
 - Sai `MONGODB_URL` hoặc Atlas chưa whitelist IP.
+- Chưa URL-encode password trong connection string.
+- Thiếu `dnspython` khiến SRV DNS lookup không ổn định ở một số runtime.
 
 ### `CORS error`
 - Thiếu domain frontend trong `ALLOWED_ORIGINS` của backend.

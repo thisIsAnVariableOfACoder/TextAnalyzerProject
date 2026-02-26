@@ -4,7 +4,7 @@ from pymongo.errors import ServerSelectionTimeoutError
 from bson.objectid import ObjectId
 from contextlib import asynccontextmanager
 from fastapi import HTTPException, status
-from app.config import MONGODB_URL, DATABASE_NAME, OCR_HISTORY_RETENTION_DAYS
+from app.config import MONGODB_URL, DATABASE_NAME, OCR_HISTORY_RETENTION_DAYS, DEBUG
 from dotenv import load_dotenv
 import os
 import logging
@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 class MongoDB:
     client: MongoClient = None
     db: Database = None
+
+    @classmethod
+    def _is_truthy(cls, value: str | None) -> bool:
+        return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
     @classmethod
     def _append_query_params(cls, uri: str, params: dict) -> str:
@@ -69,8 +73,9 @@ class MongoDB:
         if fallback_url:
             candidates.append(fallback_url)
 
-        # Always keep local Mongo fallback for dev if nothing else works.
-        if "mongodb://localhost:27017" not in candidates:
+        # Local fallback should be explicit in production to avoid hidden misconfiguration.
+        allow_local_fallback = cls._is_truthy(os.getenv("MONGODB_ALLOW_LOCAL_FALLBACK")) or DEBUG
+        if allow_local_fallback and "mongodb://localhost:27017" not in candidates:
             candidates.append("mongodb://localhost:27017")
 
         # Keep order but remove duplicates
@@ -99,14 +104,18 @@ class MongoDB:
                 except Exception:
                     pass
 
+            server_selection_timeout_ms = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "8000"))
+            connect_timeout_ms = int(os.getenv("MONGO_CONNECT_TIMEOUT_MS", "15000"))
+            socket_timeout_ms = int(os.getenv("MONGO_SOCKET_TIMEOUT_MS", "20000"))
+
             connection_errors = []
             for candidate_uri in cls._build_uri_candidates(mongodb_url):
                 try:
                     client = MongoClient(
                         candidate_uri,
-                        serverSelectionTimeoutMS=8000,
-                        connectTimeoutMS=15000,
-                        socketTimeoutMS=20000,
+                        serverSelectionTimeoutMS=server_selection_timeout_ms,
+                        connectTimeoutMS=connect_timeout_ms,
+                        socketTimeoutMS=socket_timeout_ms,
                         tlsCAFile=certifi.where(),
                     )
                     db = client[database_name]
@@ -205,5 +214,8 @@ def get_database() -> Database:
         logger.error("Database unavailable: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database is unavailable. Check MONGODB_URL in backend/.env or start local MongoDB on localhost:27017."
+            detail=(
+                "Database is unavailable. Verify Render env vars: MONGODB_URL, DATABASE_NAME; "
+                "check Atlas user/password, Network Access IP allowlist, and TLS/SRV DNS connectivity."
+            )
         )
