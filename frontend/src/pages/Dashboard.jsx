@@ -85,6 +85,23 @@ function Dashboard() {
       color: '#8B5CF6',
       bgColor: '#EDE9FE',
       stats: 'Local Translation Engine'
+    },
+    {
+      id: 'reader',
+      icon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <path d="M3 5a2 2 0 012-2h5a3 3 0 013 3v13a3 3 0 00-3-3H5a2 2 0 01-2-2V5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M21 5a2 2 0 00-2-2h-5a3 3 0 00-3 3v13a3 3 0 013-3h5a2 2 0 002-2V5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+      title: 'Universal Reader',
+      description: 'Open PDF/DOCX/DOC/TXT with format-specific providers for native rendering, keyboard navigation, fullscreen page controls, and bookmarks.',
+      badge: 'New',
+      badgeColor: 'primary',
+      action: () => navigate('/universal-reader'),
+      color: '#1E40AF',
+      bgColor: '#DBEAFE',
+      stats: 'Provider-based Native Viewer'
     }
   ]
 

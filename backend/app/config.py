@@ -55,11 +55,18 @@ RATE_LIMIT_PERIOD = timedelta(hours=1)
 MAX_BATCH_SIZE = 5
 BATCH_TIMEOUT = 300  # 5 minutes
 
-# OCR Configuration
-OCR_PROVIDER = os.getenv("OCR_PROVIDER", "auto")  # auto | tesseract | ocr_space
+# Single free-provider strategy (recommended for production simplicity)
+# Allowed: auto | tesseract | ocr_space
+# Default is ocr_space so deployment has one external free provider only.
+OCR_PROVIDER = os.getenv("OCR_PROVIDER", "ocr_space")
 TESSERACT_LANG = os.getenv("TESSERACT_LANG", "eng")
 OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")
 OCR_SPACE_LANGUAGE = os.getenv("OCR_SPACE_LANGUAGE", "eng")
+
+# Text provider strategy
+# - free_single: deep-translator as primary for translation/paraphrase, LanguageTool public for grammar.
+# - local_only: local heuristic/rule-based pipeline only.
+TEXT_PROVIDER_MODE = os.getenv("TEXT_PROVIDER_MODE", "free_single").strip().lower()
 
 # OCR history auto-retention (days). Set 0 to disable auto-delete.
 try:

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import Header from './components/Header'
 import Footer from './components/Footer'
@@ -8,6 +8,7 @@ import RegisterPage from './pages/RegisterPage'
 import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
 import EditorPage from './pages/EditorPage'
+import DocumentReaderPage from './pages/DocumentReaderPage'
 import HistoryPage from './pages/HistoryPage'
 import UserProfile from './pages/UserProfile'
 import useAuthStore from './stores/authStore'
@@ -40,6 +41,8 @@ function App() {
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/editor" element={<EditorPage />} />
+                    <Route path="/reader" element={<Navigate to="/universal-reader" replace />} />
+                    <Route path="/universal-reader" element={<DocumentReaderPage />} />
                     <Route path="/history" element={<HistoryPage />} />
                     <Route path="/account" element={<UserProfile />} />
                   </Routes>

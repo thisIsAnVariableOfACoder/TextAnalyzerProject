@@ -11,6 +11,7 @@ function TextEditor({
   locateRange = null
 }) {
   const textareaRef = useRef(null)
+  const [highlightPulse, setHighlightPulse] = useState(false)
 
   const charCount = text.length
   const wordCount = text.trim().length > 0
@@ -59,9 +60,23 @@ function TextEditor({
 
     const start = Math.max(0, Number(locateRange.start || 0))
     const end = Math.max(start, Number(locateRange.end || start))
+    const target = textareaRef.current
 
-    textareaRef.current.focus()
-    textareaRef.current.setSelectionRange(start, end)
+    target.focus()
+    target.setSelectionRange(start, end)
+
+    // Ensure located issue is visible even in very long text blocks.
+    const before = (target.value || '').slice(0, start)
+    const linesBefore = before.split('\n').length
+    const lineHeightPx = 26
+    const desiredTop = Math.max(0, (linesBefore - 3) * lineHeightPx)
+    target.scrollTop = desiredTop
+
+    setHighlightPulse(false)
+    requestAnimationFrame(() => setHighlightPulse(true))
+
+    const timer = setTimeout(() => setHighlightPulse(false), 1200)
+    return () => clearTimeout(timer)
   }, [locateRange])
 
   return (
@@ -116,7 +131,7 @@ function TextEditor({
       {/* Textarea */}
       <textarea
         ref={textareaRef}
-        className="editor-textarea"
+        className={`editor-textarea ${highlightPulse ? 'editor-textarea-focus-pulse' : ''}`}
         value={text}
         onChange={handleChange}
         placeholder={placeholder}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
+import AppSymbol from './AppSymbol'
 import './Header.css'
 
 function Header() {
@@ -43,6 +44,7 @@ function Header() {
   const navLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: '⊞' },
     { to: '/editor', label: 'Editor', icon: '✏️' },
+    { to: '/universal-reader', label: 'Universal Reader', icon: '🧠' },
     { to: '/history', label: 'History', icon: '🕐' },
   ]
 
@@ -57,11 +59,7 @@ function Header() {
         {/* Logo */}
         <Link to="/" className="logo">
           <div className="logo-icon-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 12h6M9 8h6M9 16h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="18" cy="18" r="4" fill="#3B82F6" stroke="white" strokeWidth="1.5"/>
-              <path d="M16.5 18l1 1 2-2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <AppSymbol size={22} />
           </div>
           <div className="logo-text-wrap">
             <span className="logo-name">TextAnalyzer</span>

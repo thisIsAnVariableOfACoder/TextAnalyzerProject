@@ -26,7 +26,7 @@ class OCRService:
     @staticmethod
     def process_image_file(file_bytes, file_type='image/jpeg'):
         """
-        Process image bytes and extract text using Mistral OCR API
+        Process image bytes and extract text using configured backend OCR provider.
 
         Args:
             file_bytes: Image file in bytes
@@ -63,7 +63,7 @@ class OCRService:
     @staticmethod
     def process_image_url(image_url):
         """
-        Process image from URL using Mistral OCR API
+        Process image from URL using configured backend OCR provider.
 
         Args:
             image_url: URL of the image
