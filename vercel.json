@@ -22,11 +22,5 @@
       "src": "/(.*)",
       "dest": "frontend/dist/index.html"
     }
-  ],
-  "env": {
-    "MONGODB_URL": "@mongodb_url",
-    "DATABASE_NAME": "text_analyzer",
-    "JWT_SECRET": "@jwt_secret",
-    "DEBUG": "False"
-  }
+  ]
 }
