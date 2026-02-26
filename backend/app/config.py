@@ -28,6 +28,8 @@ DEFAULT_ALLOWED_ORIGINS = ",".join([
     "http://127.0.0.1:5173",
     "http://localhost:5000",
     "http://127.0.0.1:5000",
+    "https://textanalyzerllmagik.vercel.app",
+    "https://textanalyzerproject.onrender.com",
 ])
 
 _allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", DEFAULT_ALLOWED_ORIGINS)
@@ -40,7 +42,7 @@ ALLOWED_ORIGINS = [
 # Helpful in local development when frontend may run on different localhost ports.
 ALLOWED_ORIGIN_REGEX = os.getenv(
     "ALLOWED_ORIGIN_REGEX",
-    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://([a-z0-9-]+)\.vercel\.app$"
 )
 
 # File Upload Configuration
