@@ -28,11 +28,5 @@
     "DATABASE_NAME": "text_analyzer",
     "JWT_SECRET": "@jwt_secret",
     "DEBUG": "False"
-  },
-  "functions": {
-    "backend/app/main.py": {
-      "memory": 512,
-      "maxDuration": 30
-    }
   }
 }
