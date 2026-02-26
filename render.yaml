@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: textanalyzerproject
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_NAME
+        value: text_analyzer
+      - key: OCR_PROVIDER
+        value: ocr_space
+      - key: OCR_SPACE_LANGUAGE
+        value: eng
+      - key: TEXT_PROVIDER_MODE
+        value: free_single
+

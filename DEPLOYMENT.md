@@ -105,19 +105,28 @@ Không cần đăng nhập Puter trên trình duyệt.
 1. Push code lên GitHub.
 2. Render -> **New Web Service** -> chọn repo.
 3. Root Directory: `backend`
-4. Build Command:
+4. Runtime/Language: **Python 3.11** (không dùng 3.14)
+   - Đã pin qua [`runtime.txt`](backend/runtime.txt)
+   - Nếu Render vẫn chọn 3.14, vào **Environment** thêm biến:
+
+```env
+PYTHON_VERSION=3.11.11
+```
+
+   - Hoặc deploy qua blueprint [`render.yaml`](render.yaml) để cố định runtime.
+5. Build Command:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-5. Start Command:
+6. Start Command:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-6. Thêm Environment Variables trên Render:
+7. Thêm Environment Variables trên Render:
 
 ```env
 MONGODB_URL=mongodb+srv://textanalyzer_user:your_password@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
@@ -130,9 +139,9 @@ OCR_SPACE_API_KEY=helloworld
 TEXT_PROVIDER_MODE=free_single
 ```
 
-7. Deploy và lấy URL backend, ví dụ:
+8. Deploy và lấy URL backend, ví dụ:
 
-`https://textanalyzer-api.onrender.com`
+`https://textanalyzerproject.onrender.com`
 
 ## 4.2 Deploy Frontend React (Vercel)
 
@@ -143,7 +152,7 @@ TEXT_PROVIDER_MODE=free_single
 5. Thêm env trên Vercel:
 
 ```env
-VITE_API_BASE_URL=https://textanalyzer-api.onrender.com/api
+VITE_API_BASE_URL=https://textanalyzerproject.onrender.com/api
 VITE_APP_NAME=TextAnalyzer
 ```
 
