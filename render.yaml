@@ -24,6 +24,10 @@ services:
         value: "15000"
       - key: MONGO_SOCKET_TIMEOUT_MS
         value: "20000"
+      - key: MONGO_MAX_URI_CANDIDATES
+        value: "2"
+      - key: MONGO_RETRY_COOLDOWN_SECONDS
+        value: "20"
       - key: OCR_PROVIDER
         value: ocr_space
       - key: OCR_SPACE_LANGUAGE

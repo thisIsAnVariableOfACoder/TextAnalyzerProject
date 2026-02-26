@@ -8,6 +8,7 @@ from app.config import MONGODB_URL, DATABASE_NAME, OCR_HISTORY_RETENTION_DAYS, D
 from dotenv import load_dotenv
 import os
 import logging
+import time
 from urllib.parse import urlsplit, parse_qsl, urlencode, urlunsplit
 import certifi
 
@@ -16,6 +17,8 @@ logger = logging.getLogger(__name__)
 class MongoDB:
     client: MongoClient = None
     db: Database = None
+    _last_failure_at: float | None = None
+    _last_failure_reason: str | None = None
 
     @classmethod
     def _is_truthy(cls, value: str | None) -> bool:
@@ -85,7 +88,12 @@ class MongoDB:
             if item not in seen:
                 unique.append(item)
                 seen.add(item)
-        return unique
+
+        try:
+            max_candidates = max(1, int(os.getenv("MONGO_MAX_URI_CANDIDATES", "2")))
+        except ValueError:
+            max_candidates = 2
+        return unique[:max_candidates]
 
     @classmethod
     def connect_db(cls):
@@ -96,6 +104,19 @@ class MongoDB:
             load_dotenv(override=True)
             mongodb_url = os.getenv("MONGODB_URL", MONGODB_URL)
             database_name = os.getenv("DATABASE_NAME", DATABASE_NAME)
+
+            try:
+                retry_cooldown_seconds = max(0, int(os.getenv("MONGO_RETRY_COOLDOWN_SECONDS", "20")))
+            except ValueError:
+                retry_cooldown_seconds = 20
+
+            if cls.db is None and cls._last_failure_at is not None and retry_cooldown_seconds > 0:
+                elapsed = time.monotonic() - cls._last_failure_at
+                if elapsed < retry_cooldown_seconds:
+                    raise RuntimeError(
+                        f"Mongo reconnect throttled for {retry_cooldown_seconds - int(elapsed)}s "
+                        f"after previous failure: {cls._last_failure_reason or 'unknown error'}"
+                    )
 
             # Close stale client before creating a new one
             if cls.client is not None:
@@ -126,6 +147,8 @@ class MongoDB:
                     # Assign only after ping succeeds
                     cls.client = client
                     cls.db = db
+                    cls._last_failure_at = None
+                    cls._last_failure_reason = None
                     logger.info("MongoDB connected successfully")
 
                     # Create indexes
@@ -149,6 +172,8 @@ class MongoDB:
                     pass
             cls.client = None
             cls.db = None
+            cls._last_failure_at = time.monotonic()
+            cls._last_failure_reason = str(e)
             logger.error(f"Failed to connect to MongoDB: {e}")
             raise
 

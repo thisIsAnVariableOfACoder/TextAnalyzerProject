@@ -2,6 +2,21 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://textanalyzerproject.onrender.com/api').replace(/\/$/, '')
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 15000)
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
 
 const useAuthStore = create(
   persist(
@@ -53,7 +68,7 @@ const useAuthStore = create(
       login: async (username, password) => {
         set({ loading: true, error: null })
         try {
-          const loginResponse = await fetch(`${API_BASE_URL}/auth/login`, {
+          const loginResponse = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -68,7 +83,7 @@ const useAuthStore = create(
 
           let profile = { username }
           try {
-            const meResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+            const meResponse = await fetchWithTimeout(`${API_BASE_URL}/auth/me`, {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
@@ -97,11 +112,15 @@ const useAuthStore = create(
 
           return data
         } catch (error) {
+          const errorMessage = error?.name === 'AbortError'
+            ? 'Server timeout. Backend may be cold-starting or database is unreachable.'
+            : error.message
+
           set({
-            error: error.message,
+            error: errorMessage,
             loading: false
           })
-          throw error
+          throw new Error(errorMessage)
         }
       },
 

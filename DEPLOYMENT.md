@@ -139,6 +139,8 @@ MONGODB_ALLOW_LOCAL_FALLBACK=false
 MONGO_SERVER_SELECTION_TIMEOUT_MS=12000
 MONGO_CONNECT_TIMEOUT_MS=15000
 MONGO_SOCKET_TIMEOUT_MS=20000
+MONGO_MAX_URI_CANDIDATES=2
+MONGO_RETRY_COOLDOWN_SECONDS=20
 OCR_PROVIDER=ocr_space
 OCR_SPACE_API_KEY=helloworld
 TEXT_PROVIDER_MODE=free_single
@@ -193,6 +195,11 @@ VITE_APP_NAME=TextAnalyzer
 - Sai `MONGODB_URL` hoặc Atlas chưa whitelist IP.
 - Chưa URL-encode password trong connection string.
 - Thiếu `dnspython` khiến SRV DNS lookup không ổn định ở một số runtime.
+
+### Login bị chậm lâu rồi trả `503`
+- Backend đang thử nhiều URI Mongo liên tiếp và timeout cộng dồn.
+- Giảm độ trễ bằng cách giữ `MONGO_MAX_URI_CANDIDATES=2` và `MONGO_RETRY_COOLDOWN_SECONDS=20`.
+- Kiểm tra đúng `MONGODB_URL` Atlas thay vì để backend retry vô ích.
 
 ### `CORS error`
 - Thiếu domain frontend trong `ALLOWED_ORIGINS` của backend.
