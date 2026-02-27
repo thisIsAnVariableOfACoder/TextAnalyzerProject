@@ -8,7 +8,23 @@ def _first_env(*keys: str, default: str = "") -> str:
     for key in keys:
         value = os.getenv(key)
         if value is not None and str(value).strip() != "":
-            return str(value).strip()
+            cleaned = str(value).strip().strip('"').strip("'")
+
+            # Recover from accidental dashboard paste: "KEY=value"
+            for candidate_key in keys:
+                prefix = f"{candidate_key}="
+                if cleaned.startswith(prefix):
+                    cleaned = cleaned[len(prefix):].strip()
+
+            if not cleaned.startswith(("mongodb://", "mongodb+srv://")):
+                srv_idx = cleaned.find("mongodb+srv://")
+                std_idx = cleaned.find("mongodb://")
+                idx = srv_idx if srv_idx >= 0 else std_idx
+                if idx >= 0:
+                    cleaned = cleaned[idx:]
+
+            if cleaned:
+                return cleaned
     return default
 
 BASE_DIR = Path(__file__).resolve().parent.parent
