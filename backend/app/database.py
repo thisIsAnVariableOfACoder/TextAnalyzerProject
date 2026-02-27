@@ -25,6 +25,14 @@ class MongoDB:
         return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
     @classmethod
+    def _first_env(cls, *keys: str, default: str = "") -> str:
+        for key in keys:
+            value = os.getenv(key)
+            if value is not None and str(value).strip() != "":
+                return str(value).strip()
+        return default
+
+    @classmethod
     def _append_query_params(cls, uri: str, params: dict) -> str:
         """Append/override query params in MongoDB URI safely."""
         parts = urlsplit(uri)
@@ -52,6 +60,11 @@ class MongoDB:
                 "Ignoring placeholder MongoDB URI from env. Please set a real Atlas URI or use local MongoDB."
             )
 
+        # Explicit fallback should be prioritized before generated SRV variants.
+        fallback_url = os.getenv("MONGODB_URL_FALLBACK", "").strip()
+        if fallback_url:
+            candidates.append(fallback_url)
+
         # Atlas SRV URI sometimes fails in strict/corporate DNS environments.
         if mongodb_url.startswith("mongodb+srv://") and not _looks_like_placeholder(mongodb_url):
             candidates.append(
@@ -71,10 +84,6 @@ class MongoDB:
                     "tlsDisableOCSPEndpointCheck": "true",
                 })
             )
-
-        fallback_url = os.getenv("MONGODB_URL_FALLBACK", "").strip()
-        if fallback_url:
-            candidates.append(fallback_url)
 
         # Local fallback should be explicit in production to avoid hidden misconfiguration.
         allow_local_fallback = cls._is_truthy(os.getenv("MONGODB_ALLOW_LOCAL_FALLBACK")) or DEBUG
@@ -96,14 +105,52 @@ class MongoDB:
         return unique[:max_candidates]
 
     @classmethod
+    def status_snapshot(cls) -> dict:
+        """Return non-sensitive DB connectivity diagnostics for health endpoints."""
+        configured_url = cls._first_env("MONGODB_URL", "MONGODB_URI", "MONGO_URL", default=MONGODB_URL) or ""
+        configured_db_name = cls._first_env("DATABASE_NAME", "MONGODB_DATABASE", "MONGO_DB_NAME", default=DATABASE_NAME) or ""
+        has_fallback = bool((os.getenv("MONGODB_URL_FALLBACK", "") or "").strip())
+        allow_local_fallback = cls._is_truthy(os.getenv("MONGODB_ALLOW_LOCAL_FALLBACK")) or DEBUG
+        try:
+            max_candidates = max(1, int(os.getenv("MONGO_MAX_URI_CANDIDATES", "2")))
+        except ValueError:
+            max_candidates = 2
+
+        inferred_candidate_count = 1
+        if configured_url.startswith("mongodb+srv://"):
+            inferred_candidate_count += 2
+        if has_fallback:
+            inferred_candidate_count += 1
+        if allow_local_fallback:
+            inferred_candidate_count += 1
+
+        return {
+            "connected": cls.client is not None and cls.db is not None,
+            "has_mongodb_url": bool(configured_url.strip()),
+            "mongodb_url_scheme": configured_url.split("://")[0] if "://" in configured_url else "unknown",
+            "database_name": configured_db_name,
+            "has_mongodb_url_fallback": has_fallback,
+            "allow_local_fallback": allow_local_fallback,
+            "mongo_max_uri_candidates": max_candidates,
+            "estimated_uri_candidates": min(inferred_candidate_count, max_candidates),
+            "last_failure_reason": cls._last_failure_reason,
+        }
+
+    @classmethod
     def connect_db(cls):
         """Connect to MongoDB"""
         client = None
         try:
             # Reload .env on each connect attempt so updated local config is picked up
             load_dotenv(override=True)
-            mongodb_url = os.getenv("MONGODB_URL", MONGODB_URL)
-            database_name = os.getenv("DATABASE_NAME", DATABASE_NAME)
+            mongodb_url = cls._first_env("MONGODB_URL", "MONGODB_URI", "MONGO_URL", default=MONGODB_URL)
+            database_name = cls._first_env("DATABASE_NAME", "MONGODB_DATABASE", "MONGO_DB_NAME", default=DATABASE_NAME)
+
+            if not mongodb_url or not str(mongodb_url).strip():
+                raise RuntimeError("MONGODB_URL is empty or missing")
+
+            if not database_name or not str(database_name).strip():
+                raise RuntimeError("DATABASE_NAME is empty or missing")
 
             try:
                 retry_cooldown_seconds = max(0, int(os.getenv("MONGO_RETRY_COOLDOWN_SECONDS", "20")))

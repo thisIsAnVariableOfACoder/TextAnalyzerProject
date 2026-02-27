@@ -3,13 +3,32 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
+
+def _first_env(*keys: str, default: str = "") -> str:
+    for key in keys:
+        value = os.getenv(key)
+        if value is not None and str(value).strip() != "":
+            return str(value).strip()
+    return default
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
 load_dotenv(dotenv_path=ENV_PATH, override=True)
 
 # Database Configuration
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
-DATABASE_NAME = os.getenv("DATABASE_NAME", "text_analyzer")
+# Accept common variable names used by different platforms/integrations.
+MONGODB_URL = _first_env(
+    "MONGODB_URL",
+    "MONGODB_URI",
+    "MONGO_URL",
+    default="mongodb://localhost:27017",
+)
+DATABASE_NAME = _first_env(
+    "DATABASE_NAME",
+    "MONGODB_DATABASE",
+    "MONGO_DB_NAME",
+    default="text_analyzer",
+)
 
 # JWT Configuration
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this-in-production")

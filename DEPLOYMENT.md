@@ -146,6 +146,10 @@ OCR_SPACE_API_KEY=helloworld
 TEXT_PROVIDER_MODE=free_single
 ```
 
+> Backend hiện hỗ trợ cả alias env DB thường gặp từ Vercel integration:
+> - `MONGODB_URL` hoặc `MONGODB_URI` hoặc `MONGO_URL`
+> - `DATABASE_NAME` hoặc `MONGODB_DATABASE` hoặc `MONGO_DB_NAME`
+
 > Nếu mật khẩu MongoDB có ký tự đặc biệt (`@`, `:`, `/`, `%`, `#`, `?`) thì bắt buộc URL-encode trong `MONGODB_URL`.
 
 8. Deploy và lấy URL backend, ví dụ:
@@ -200,6 +204,10 @@ VITE_APP_NAME=TextAnalyzer
 - Backend đang thử nhiều URI Mongo liên tiếp và timeout cộng dồn.
 - Giảm độ trễ bằng cách giữ `MONGO_MAX_URI_CANDIDATES=2` và `MONGO_RETRY_COOLDOWN_SECONDS=20`.
 - Kiểm tra đúng `MONGODB_URL` Atlas thay vì để backend retry vô ích.
+
+### Debug chính xác nguyên nhân DB trên production
+- Gọi endpoint: `/health/db` hoặc `/api/health/db`.
+- Endpoint trả `last_failure_reason` (không lộ mật khẩu) để biết lỗi thật: auth fail, DNS fail, TLS fail, IP whitelist fail...
 
 ### `CORS error`
 - Thiếu domain frontend trong `ALLOWED_ORIGINS` của backend.

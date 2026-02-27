@@ -119,6 +119,28 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat()
     }
 
+
+@app.get("/health/db")
+@app.get("/api/health/db")
+async def health_db_check():
+    """Database connectivity diagnostics for production troubleshooting."""
+    snapshot = MongoDB.status_snapshot()
+    if snapshot.get("connected"):
+        return {
+            "status": "healthy",
+            "db": snapshot,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    return JSONResponse(
+        status_code=503,
+        content={
+            "status": "unhealthy",
+            "db": snapshot,
+            "timestamp": datetime.utcnow().isoformat()
+        },
+    )
+
 # Root endpoint
 @app.get("/")
 @app.get("/api")
